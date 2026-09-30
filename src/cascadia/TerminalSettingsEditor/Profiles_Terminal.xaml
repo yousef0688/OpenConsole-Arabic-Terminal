@@ -1,0 +1,118 @@
+<!--
+    Copyright (c) Microsoft Corporation. All rights reserved. Licensed under
+    the MIT License. See LICENSE in the project root for license information.
+-->
+<Page x:Class="Microsoft.Terminal.Settings.Editor.Profiles_Terminal"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:local="using:Microsoft.Terminal.Settings.Editor"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:model="using:Microsoft.Terminal.Settings.Model"
+      xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+      mc:Ignorable="d">
+
+    <Page.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="CommonResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Page.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock x:Uid="Profile_BaseLayerDisclaimer"
+                   Style="{StaticResource DisclaimerStyle}"
+                   Visibility="{x:Bind Profile.IsBaseLayer}" />
+        <StackPanel Grid.Row="1"
+                    Style="{StaticResource SettingsStackStyle}">
+
+            <!--  Suppress Application Title  -->
+            <local:SettingsCard x:Name="SuppressApplicationTitle"
+                                x:Uid="Profile_SuppressApplicationTitle">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ToggleSwitch VerticalAlignment="Center"
+                                  IsOn="{x:Bind Profile.SuppressApplicationTitle, Mode=TwoWay}"
+                                  Style="{StaticResource ToggleSwitchInExpanderStyle}" />
+                    <local:SettingResetButton SettingName="SuppressApplicationTitle"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  Force VT Input  -->
+            <local:SettingsCard x:Name="ForceVTInput"
+                                x:Uid="Profile_ForceVTInput">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ToggleSwitch VerticalAlignment="Center"
+                                  IsOn="{x:Bind Profile.ForceVTInput, Mode=TwoWay}"
+                                  Style="{StaticResource ToggleSwitchInExpanderStyle}" />
+                    <local:SettingResetButton SettingName="ForceVTInput"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  Kitty Keyboard Mode  -->
+            <local:SettingsCard x:Name="AllowKittyKeyboardMode"
+                                x:Uid="Profile_AllowKittyKeyboardMode">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ToggleSwitch VerticalAlignment="Center"
+                                  IsOn="{x:Bind Profile.AllowKittyKeyboardMode, Mode=TwoWay}"
+                                  Style="{StaticResource ToggleSwitchInExpanderStyle}" />
+                    <local:SettingResetButton SettingName="AllowKittyKeyboardMode"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  Allow VT Checksum Report  -->
+            <local:SettingsCard x:Name="AllowVtChecksumReport"
+                                x:Uid="Profile_AllowVtChecksumReport">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ToggleSwitch VerticalAlignment="Center"
+                                  IsOn="{x:Bind Profile.AllowVtChecksumReport, Mode=TwoWay}"
+                                  Style="{StaticResource ToggleSwitchInExpanderStyle}" />
+                    <local:SettingResetButton SettingName="AllowVtChecksumReport"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  Allow VT Clipboard Writing  -->
+            <local:SettingsCard x:Name="AllowVtClipboardWrite"
+                                x:Uid="Profile_AllowVtClipboardWrite">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ToggleSwitch VerticalAlignment="Center"
+                                  IsOn="{x:Bind Profile.AllowVtClipboardWrite, Mode=TwoWay}"
+                                  Style="{StaticResource ToggleSwitchInExpanderStyle}" />
+                    <local:SettingResetButton SettingName="AllowVtClipboardWrite"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  Allow OSC 777 Desktop Notifications  -->
+            <local:SettingsCard x:Name="AllowOscNotifications"
+                                x:Uid="Profile_AllowOscNotifications">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ToggleSwitch VerticalAlignment="Center"
+                                  IsOn="{x:Bind Profile.AllowOscNotifications, Mode=TwoWay}"
+                                  Style="{StaticResource ToggleSwitchInExpanderStyle}" />
+                    <local:SettingResetButton SettingName="AllowOscNotifications"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  Answerback Message  -->
+            <local:SettingsCard x:Name="AnswerbackMessage"
+                                x:Uid="Profile_AnswerbackMessage">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <TextBox Style="{StaticResource TextBoxSettingStyle}"
+                             Text="{x:Bind Profile.AnswerbackMessage, Mode=TwoWay}" />
+                    <local:SettingResetButton SettingName="AnswerbackMessage"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+        </StackPanel>
+    </Grid>
+</Page>

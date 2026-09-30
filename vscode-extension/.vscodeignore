@@ -1,0 +1,9 @@
+.vscode/**
+node_modules/**
+scripts/**
+test/**
+package-lock.json
+**/*.map
+**/*.obj
+**/*.pdb
+*.vsix

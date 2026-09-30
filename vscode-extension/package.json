@@ -1,0 +1,189 @@
+{
+  "name": "openconsole-terminal",
+  "displayName": "OpenConsole Arabic Terminal",
+  "description": "A terminal in the panel of VS Code that shows Arabic and Hebrew correctly: connected letters and right-to-left order.",
+  "version": "0.1.0",
+  "publisher": "openconsole",
+  "license": "MIT",
+  "preview": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "terminal",
+    "arabic",
+    "hebrew",
+    "rtl",
+    "bidi",
+    "العربية"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "The terminal starts programs on your computer. In a workspace that is not trusted, the shell can only be the one set in your own user settings.",
+      "restrictedConfigurations": [
+        "openconsole.shell",
+        "openconsole.shellArgs"
+      ]
+    }
+  },
+  "icon": "media/icon.png",
+  "main": "./src/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "openconsole",
+          "title": "OpenConsole",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "openconsole": [
+        {
+          "type": "webview",
+          "id": "openconsole.terminal",
+          "name": "OpenConsole"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "openconsole.focus",
+        "title": "OpenConsole: Focus Terminal"
+      },
+      {
+        "command": "openconsole.newEditorTerminal",
+        "title": "OpenConsole: New Terminal in Editor",
+        "icon": "$(add)"
+      },
+      {
+        "command": "openconsole.restart",
+        "title": "OpenConsole: Restart Terminal",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "openconsole.clear",
+        "title": "OpenConsole: Clear Terminal",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "openconsole.sendText",
+        "title": "OpenConsole: Send Text to Terminal"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "openconsole.newEditorTerminal",
+          "when": "view == openconsole.terminal",
+          "group": "navigation@1"
+        },
+        {
+          "command": "openconsole.restart",
+          "when": "view == openconsole.terminal",
+          "group": "navigation@2"
+        },
+        {
+          "command": "openconsole.clear",
+          "when": "view == openconsole.terminal",
+          "group": "navigation@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "openconsole.sendText",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "OpenConsole",
+      "properties": {
+        "openconsole.shell": {
+          "type": "string",
+          "default": "powershell.exe",
+          "markdownDescription": "The program that the OpenConsole terminal starts, for example `powershell.exe`, `pwsh.exe` or `cmd.exe`.",
+          "scope": "machine"
+        },
+        "openconsole.shellArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "-NoLogo"
+          ],
+          "markdownDescription": "Arguments for `#openconsole.shell#`.",
+          "scope": "machine"
+        },
+        "openconsole.bidiMode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "implicit",
+            "visual"
+          ],
+          "enumDescriptions": [
+            "Reorder right-to-left text, except while a program from `openconsole.visualBidiApps` runs in the terminal.",
+            "Always reorder right-to-left text (programs write it in reading order).",
+            "The program has already reordered its text: keep the order and only join the letters."
+          ],
+          "default": "auto",
+          "markdownDescription": "How right-to-left text is laid out. Leave it on `auto` unless you know why."
+        },
+        "openconsole.visualBidiApps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "claude.exe"
+          ],
+          "markdownDescription": "Programs that reorder right-to-left text themselves (they assume a terminal that cannot). Names of executable files. While one of them runs in the terminal, the layout keeps its order and only joins the letters."
+        },
+        "openconsole.fontFamily": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "The font of the terminal. Empty: `#terminal.integrated.fontFamily#`, then `#editor.fontFamily#`."
+        },
+        "openconsole.fontSize": {
+          "type": "number",
+          "default": 0,
+          "markdownDescription": "The font size. `0`: `#terminal.integrated.fontSize#`."
+        },
+        "openconsole.textFont": {
+          "type": "string",
+          "default": "Segoe UI",
+          "markdownDescription": "The font for Arabic and Hebrew letters. It is used instead of the fonts that come after the first font of the terminal, because fixed-width fonts that have Arabic letters of their own (Courier New, Nerd Fonts) draw them squeezed. Empty: no special font."
+        },
+        "openconsole.iconFont": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "A font for the icons that programs draw with symbols of the private use area, for example `CaskaydiaCove NFM`."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.js",
+    "build:native": "powershell -NoProfile -ExecutionPolicy Bypass -File native/build.ps1",
+    "test": "node --test --test-timeout=60000 test/layout.test.js test/session.test.js test/bridge.test.js",
+    "package": "node scripts/build.js && vsce package --no-dependencies --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "4.0.0",
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/addon-unicode11": "0.9.0",
+    "@xterm/xterm": "6.0.0",
+    "bidi-js": "1.1.0"
+  }
+}

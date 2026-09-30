@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OpenConsole row patcher test</title>
+<link rel="stylesheet" href="../node_modules/@xterm/xterm/css/xterm.css">
+<style>
+  body { background:#1e1e1e; color:#ccc; margin:12px; font:13px Segoe UI, sans-serif; }
+  h3 { margin:12px 0 4px; font-weight:600; }
+  .term { width:640px; background:#181818; padding:4px; }
+</style>
+</head>
+<body>
+<h3>Implicit mode: PowerShell and most programs (logical order)</h3>
+<div id="a" class="term"></div>
+<h3>Visual mode: a program that already reordered the text (Claude Code)</h3>
+<div id="b" class="term"></div>
+<script src="../node_modules/@xterm/xterm/lib/xterm.js"></script>
+<script src="../node_modules/bidi-js/dist/bidi.js"></script>
+<script src="../media/arabic-layout.js"></script>
+<script src="../media/row-patcher.js"></script>
+<script>
+  const A = (cps) => String.fromCodePoint(...cps);
+  const salam = A([0x627,0x644,0x633,0x644,0x627,0x645]), alaykum = A([0x639,0x644,0x64A,0x643,0x645]);
+  const marhaba = A([0x645,0x631,0x62D,0x628,0x627]), alam = A([0x639,0x627,0x644,0x645]);
+  const sentence = 'هذا اختبار للغة العربية في الطرفية';
+  const tash = A([0x627,0x644,0x633,0x64E,0x651,0x644,0x627,0x645,0x64F]) + ' ' + A([0x639,0x64E,0x644,0x64E,0x64A,0x652,0x643,0x64F,0x645,0x652]);
+  const rev = (s) => Array.from(s).reverse().join('');
+  const opts = { fontFamily: "Consolas, 'Segoe UI', monospace", fontSize: 14, lineHeight: 1, cols: 76, rows: 9, allowProposedApi: true, cursorStyle: 'bar', cursorBlink: false, theme: { background: '#181818', cursor: '#ffcc00' } };
+
+  function make(id, mode, rows) {
+    const t = new Terminal(Object.assign({}, opts, { rows }));
+    t.open(document.getElementById(id));
+    const p = new OCRowPatcher(t, () => mode);
+    p.start();
+    t.focus();
+    return { t, p };
+  }
+  const a = make('a', 'implicit', 9);
+  const lines = [
+    'PS C:\\Users\\pc> ' + salam + ' ' + alaykum,
+    'Hello ' + marhaba + ' world 123 \x1b[33m' + alam + '\x1b[0m end',
+    sentence,
+    '\u2502 ' + marhaba + ' \u2502 Hello \u2502 ' + alam + ' \u2502 ' + salam + ' \u2502',
+    'tashkeel: ' + tash,
+    '\x1b[1;31mbold red\x1b[0m ' + salam + ' \x1b[32m' + alaykum + '\x1b[0m \x1b[4munder\x1b[0m',
+    A([0x646,0x633,0x62E,0x629]) + ' 2.0  ' + A([0x661,0x662,0x663]) + ' ok',
+    'PS C:\\Users\\pc> ' + salam,     // the cursor stays here, right after the word
+  ];
+  a.written = new Promise((res) => a.t.write(lines.join('\r\n'), res));
+
+  const b = make('b', 'visual', 4);
+  b.written = new Promise((res) => b.t.write([
+    'claude> ' + rev(salam + ' ' + alaykum),
+    'claude> ' + rev(marhaba + ' ' + alam) + ' (ok) \x1b[36mdone\x1b[0m',
+    'claude> ' + rev(sentence),
+  ].join('\r\n'), res));
+
+  window.ready = Promise.all([a.written, b.written]).then(() => new Promise(r => setTimeout(r, 400)));
+</script>
+</body>
+</html>

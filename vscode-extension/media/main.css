@@ -1,0 +1,41 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: var(--oc-background, var(--vscode-terminal-background, var(--vscode-panel-background, #1e1e1e)));
+}
+
+#terminal {
+    position: absolute;
+    inset: 0;
+    padding: 2px 0 0 8px;
+    box-sizing: border-box;
+}
+
+#terminal .xterm {
+    height: 100%;
+}
+
+/* the scroll bar of xterm.js takes the colours of VS Code */
+#terminal .xterm-viewport {
+    background-color: transparent !important;
+}
+
+#message {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 8px;
+    padding: 6px 10px;
+    border-radius: 3px;
+    font: 12px var(--vscode-font-family, sans-serif);
+    color: var(--vscode-foreground, #ccc);
+    background: var(--vscode-editorWidget-background, #252526);
+    border: 1px solid var(--vscode-editorWidget-border, #454545);
+    z-index: 10;
+}
+
+#message[hidden] {
+    display: none;
+}

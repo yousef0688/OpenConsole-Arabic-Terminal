@@ -1,0 +1,341 @@
+<!--
+    Copyright (c) Microsoft Corporation. All rights reserved. Licensed under
+    the MIT License. See LICENSE in the project root for license information.
+-->
+<Page x:Class="Microsoft.Terminal.Settings.Editor.Profiles_Advanced"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:local="using:Microsoft.Terminal.Settings.Editor"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:model="using:Microsoft.Terminal.Settings.Model"
+      xmlns:mtu="using:Microsoft.Terminal.UI"
+      xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+      mc:Ignorable="d">
+
+    <Page.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="CommonResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <DataTemplate x:Key="EnumComboBoxTemplate"
+                          x:DataType="local:EnumEntry">
+                <TextBlock Text="{x:Bind EnumName, Mode=OneWay}" />
+            </DataTemplate>
+        </ResourceDictionary>
+    </Page.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock x:Uid="Profile_BaseLayerDisclaimer"
+                   Style="{StaticResource DisclaimerStyle}"
+                   Visibility="{x:Bind Profile.IsBaseLayer}" />
+        <StackPanel Grid.Row="1"
+                    Style="{StaticResource SettingsStackStyle}">
+            <!--  Antialiasing Mode  -->
+            <local:SettingsCard x:Name="AntialiasingMode"
+                                x:Uid="Profile_AntialiasingMode"
+                                Style="{StaticResource ExpanderAlignedSettingsCardStyle}">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ComboBox AutomationProperties.AccessibilityView="Content"
+                              ItemTemplate="{StaticResource EnumComboBoxTemplate}"
+                              ItemsSource="{x:Bind Profile.AntiAliasingModeList, Mode=OneWay}"
+                              SelectedItem="{x:Bind Profile.CurrentAntiAliasingMode, Mode=TwoWay}"
+                              Style="{StaticResource ComboBoxSettingStyle}" />
+                    <local:SettingResetButton SettingName="AntialiasingMode"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  AltGr Aliasing  -->
+            <local:SettingsCard x:Name="AltGrAliasing"
+                                x:Uid="Profile_AltGrAliasing"
+                                Style="{StaticResource ExpanderAlignedSettingsCardStyle}">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ToggleSwitch VerticalAlignment="Center"
+                                  IsOn="{x:Bind Profile.AltGrAliasing, Mode=TwoWay}"
+                                  Style="{StaticResource ToggleSwitchInExpanderStyle}" />
+                    <local:SettingResetButton SettingName="AltGrAliasing"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  Snap On Input  -->
+            <local:SettingsCard x:Name="SnapOnInput"
+                                x:Uid="Profile_SnapOnInput"
+                                Style="{StaticResource ExpanderAlignedSettingsCardStyle}">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ToggleSwitch VerticalAlignment="Center"
+                                  IsOn="{x:Bind Profile.SnapOnInput, Mode=TwoWay}"
+                                  Style="{StaticResource ToggleSwitchInExpanderStyle}" />
+                    <local:SettingResetButton SettingName="SnapOnInput"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  History Size  -->
+            <local:SettingsCard x:Name="HistorySize"
+                                x:Uid="Profile_HistorySize"
+                                Style="{StaticResource ExpanderAlignedSettingsCardStyle}">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <muxc:NumberBox x:Uid="Profile_HistorySizeBox"
+                                    LargeChange="100"
+                                    Minimum="0"
+                                    SmallChange="10"
+                                    Style="{StaticResource NumberBoxSettingStyle}"
+                                    Value="{x:Bind Profile.HistorySize, Mode=TwoWay}" />
+                    <local:SettingResetButton SettingName="HistorySize"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  Close On Exit  -->
+            <local:SettingsCard x:Name="CloseOnExit"
+                                x:Uid="Profile_CloseOnExit"
+                                Style="{StaticResource ExpanderAlignedSettingsCardStyle}">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ComboBox AutomationProperties.AccessibilityView="Content"
+                              ItemTemplate="{StaticResource EnumComboBoxTemplate}"
+                              ItemsSource="{x:Bind Profile.CloseOnExitModeList, Mode=OneWay}"
+                              SelectedItem="{x:Bind Profile.CurrentCloseOnExitMode, Mode=TwoWay}"
+                              Style="{StaticResource ComboBoxSettingStyle}" />
+                    <local:SettingResetButton SettingName="CloseOnExit"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  Bell Style  -->
+            <local:SettingsExpander x:Name="BellStyle"
+                                    x:Uid="Profile_BellStyle"
+                                    AutomationProperties.Name="{x:Bind Profile.BellStyleAccessibleName, Mode=OneWay}">
+                <local:SettingsExpander.Content>
+                    <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                        <TextBlock VerticalAlignment="Center"
+                                   Style="{StaticResource SettingContainerCurrentValueTextBlockStyle}"
+                                   Text="{x:Bind Profile.BellStylePreview, Mode=OneWay}" />
+                        <local:SettingResetButton SettingName="BellStyle"
+                                                  Target="{x:Bind Profile}" />
+                    </StackPanel>
+                </local:SettingsExpander.Content>
+                <local:SettingsExpander.ItemsHeader>
+                    <ContentPresenter Padding="16,12,16,16">
+                        <StackPanel>
+                            <CheckBox x:Uid="Profile_BellStyleAudible"
+                                      IsChecked="{x:Bind Profile.IsBellStyleFlagSet(1), BindBack=Profile.SetBellStyleAudible, Mode=TwoWay}" />
+                            <CheckBox x:Uid="Profile_BellStyleWindow"
+                                      IsChecked="{x:Bind Profile.IsBellStyleFlagSet(2), BindBack=Profile.SetBellStyleWindow, Mode=TwoWay}" />
+                            <CheckBox x:Uid="Profile_BellStyleTaskbar"
+                                      IsChecked="{x:Bind Profile.IsBellStyleFlagSet(4), BindBack=Profile.SetBellStyleTaskbar, Mode=TwoWay}" />
+                            <CheckBox x:Uid="Profile_BellStyleNotification"
+                                      IsChecked="{x:Bind Profile.IsBellStyleFlagSet(8), BindBack=Profile.SetBellStyleNotification, Mode=TwoWay}" />
+                        </StackPanel>
+                    </ContentPresenter>
+                </local:SettingsExpander.ItemsHeader>
+            </local:SettingsExpander>
+
+            <!--  Bell Sound  -->
+            <local:SettingsExpander x:Name="BellSound"
+                                    x:Uid="Profile_BellSound"
+                                    AutomationProperties.Name="{x:Bind Profile.BellSoundAccessibleName, Mode=OneWay}">
+                <local:SettingsExpander.Content>
+                    <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                        <TextBlock VerticalAlignment="Center"
+                                   Style="{StaticResource SettingContainerCurrentValueTextBlockStyle}"
+                                   Text="{x:Bind Profile.BellSoundPreview, Mode=OneWay}" />
+                        <local:SettingResetButton SettingName="BellSound"
+                                                  Target="{x:Bind Profile}" />
+                    </StackPanel>
+                </local:SettingsExpander.Content>
+                <local:SettingsExpander.ItemsHeader>
+                    <ContentPresenter Padding="16,12,16,16">
+                        <StackPanel Spacing="10">
+                            <TextBlock x:Uid="Profile_BellSoundInfo"
+                                       Style="{StaticResource DisclaimerStyle}" />
+                            <ItemsControl ItemsSource="{x:Bind Profile.CurrentBellSounds, Mode=OneWay}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="4" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:BellSoundViewModel">
+                                        <Grid TabFocusNavigation="Local">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="300" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <!--  standard UI for bell sound entry  -->
+                                            <StackPanel Grid.Column="0"
+                                                        Visibility="{x:Bind FileExists, Mode=OneWay}">
+                                                <TextBlock Style="{StaticResource TextBlockSettingStyle}"
+                                                           Text="{x:Bind DisplayPath, Mode=OneWay}" />
+                                                <TextBlock Foreground="{ThemeResource SubgroupHeaderBrush}"
+                                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                                           Text="{x:Bind SubText, Mode=OneWay}"
+                                                           Visibility="{x:Bind ShowDirectory, Mode=OneWay}" />
+                                            </StackPanel>
+                                            <!--  When a file is not found, we use this UI  -->
+                                            <StackPanel Grid.Column="0"
+                                                        Visibility="{x:Bind mtu:Converters.InvertedBooleanToVisibility(FileExists), Mode=OneWay}">
+                                                <TextBlock Style="{StaticResource TextBlockSettingStyle}"
+                                                           Text="{x:Bind DisplayPath, Mode=OneWay}"
+                                                           TextDecorations="Strikethrough" />
+                                                <TextBlock Foreground="{ThemeResource SubgroupHeaderBrush}"
+                                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                                           Text="{x:Bind SubText, Mode=OneWay}" />
+                                            </StackPanel>
+                                            <Button x:Uid="Profile_BellSoundAudioPreview"
+                                                    Grid.Column="1"
+                                                    Margin="4,0,0,0"
+                                                    VerticalAlignment="Stretch"
+                                                    Click="BellSoundAudioPreview_Click"
+                                                    IsEnabled="{x:Bind FileExists, Mode=OneWay}"
+                                                    Style="{StaticResource BrowseButtonStyle}"
+                                                    Tag="{Binding Mode=OneWay}">
+                                                <FontIcon FontSize="{StaticResource StandardIconSize}"
+                                                          Glyph="&#xE767;" />
+                                            </Button>
+                                            <Button x:Uid="Profile_BellSoundDelete"
+                                                    Grid.Column="2"
+                                                    Margin="4,0,0,0"
+                                                    VerticalAlignment="Stretch"
+                                                    Click="BellSoundDelete_Click"
+                                                    Style="{StaticResource DeleteButtonStyle}"
+                                                    Tag="{Binding Mode=OneWay}">
+                                                <FontIcon FontSize="{StaticResource StandardIconSize}"
+                                                          Glyph="&#xE74D;" />
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button x:Name="AddBellSoundButton"
+                                    Click="BellSoundAdd_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <FontIcon FontSize="{StaticResource StandardIconSize}"
+                                              Glyph="&#xE948;" />
+                                    <TextBlock x:Uid="Profile_AddBellSound"
+                                               Margin="8,0,0,0" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </ContentPresenter>
+                </local:SettingsExpander.ItemsHeader>
+            </local:SettingsExpander>
+
+            <!--  RightClickContextMenu  -->
+            <local:SettingsCard x:Name="RightClickContextMenu"
+                                x:Uid="Profile_RightClickContextMenu"
+                                Style="{StaticResource ExpanderAlignedSettingsCardStyle}">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ToggleSwitch VerticalAlignment="Center"
+                                  IsOn="{x:Bind Profile.RightClickContextMenu, Mode=TwoWay}"
+                                  Style="{StaticResource ToggleSwitchInExpanderStyle}" />
+                    <local:SettingResetButton SettingName="RightClickContextMenu"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  ShowMarks  -->
+            <local:SettingsCard x:Name="ShowMarks"
+                                x:Uid="Profile_ShowMarks"
+                                Style="{StaticResource ExpanderAlignedSettingsCardStyle}"
+                                Visibility="{x:Bind Profile.ShowMarksAvailable}">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ToggleSwitch VerticalAlignment="Center"
+                                  IsOn="{x:Bind Profile.ShowMarks, Mode=TwoWay}"
+                                  Style="{StaticResource ToggleSwitchInExpanderStyle}" />
+                    <local:SettingResetButton SettingName="ShowMarks"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  AutoMarkPrompts  -->
+            <local:SettingsCard x:Name="AutoMarkPrompts"
+                                x:Uid="Profile_AutoMarkPrompts"
+                                Style="{StaticResource ExpanderAlignedSettingsCardStyle}"
+                                Visibility="{x:Bind Profile.AutoMarkPromptsAvailable}">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ToggleSwitch VerticalAlignment="Center"
+                                  IsOn="{x:Bind Profile.AutoMarkPrompts, Mode=TwoWay}"
+                                  Style="{StaticResource ToggleSwitchInExpanderStyle}" />
+                    <local:SettingResetButton SettingName="AutoMarkPrompts"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  ReloadEnvVars  -->
+            <local:SettingsCard x:Name="ReloadEnvVars"
+                                x:Uid="Profile_ReloadEnvVars"
+                                Style="{StaticResource ExpanderAlignedSettingsCardStyle}">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ToggleSwitch VerticalAlignment="Center"
+                                  IsOn="{x:Bind Profile.ReloadEnvironmentVariables, Mode=TwoWay}"
+                                  Style="{StaticResource ToggleSwitchInExpanderStyle}" />
+                    <local:SettingResetButton SettingName="ReloadEnvironmentVariables"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  RepositionCursorWithMouse  -->
+            <local:SettingsCard x:Name="RepositionCursorWithMouse"
+                                x:Uid="Profile_RepositionCursorWithMouse"
+                                Style="{StaticResource ExpanderAlignedSettingsCardStyle}"
+                                Visibility="{x:Bind Profile.RepositionCursorWithMouseAvailable}">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ToggleSwitch VerticalAlignment="Center"
+                                  IsOn="{x:Bind Profile.RepositionCursorWithMouse, Mode=TwoWay}"
+                                  Style="{StaticResource ToggleSwitchInExpanderStyle}" />
+                    <local:SettingResetButton SettingName="RepositionCursorWithMouse"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  RainbowSuggestions  -->
+            <local:SettingsCard x:Name="RainbowSuggestions"
+                                x:Uid="Profile_RainbowSuggestions"
+                                Style="{StaticResource ExpanderAlignedSettingsCardStyle}">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ToggleSwitch VerticalAlignment="Center"
+                                  IsOn="{x:Bind Profile.RainbowSuggestions, Mode=TwoWay}"
+                                  Style="{StaticResource ToggleSwitchInExpanderStyle}" />
+                    <local:SettingResetButton SettingName="RainbowSuggestions"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  Path Translation  -->
+            <local:SettingsCard x:Name="PathTranslationStyle"
+                                x:Uid="Profile_PathTranslationStyle"
+                                Style="{StaticResource ExpanderAlignedSettingsCardStyle}">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <ComboBox AutomationProperties.AccessibilityView="Content"
+                              ItemTemplate="{StaticResource EnumComboBoxTemplate}"
+                              ItemsSource="{x:Bind Profile.PathTranslationStyleList, Mode=OneWay}"
+                              SelectedItem="{x:Bind Profile.CurrentPathTranslationStyle, Mode=TwoWay}"
+                              Style="{StaticResource ComboBoxSettingStyle}" />
+                    <local:SettingResetButton SettingName="PathTranslationStyle"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <!--  Drag Drop Delimiter  -->
+            <local:SettingsCard x:Name="DragDropDelimiter"
+                                x:Uid="Profile_DragDropDelimiter"
+                                Style="{StaticResource ExpanderAlignedSettingsCardStyle}">
+                <StackPanel Style="{StaticResource SettingControlStackStyle}">
+                    <TextBox Style="{StaticResource TextBoxSettingStyle}"
+                             Text="{x:Bind Profile.DragDropDelimiter, Mode=TwoWay}" />
+                    <local:SettingResetButton SettingName="DragDropDelimiter"
+                                              Target="{x:Bind Profile}" />
+                </StackPanel>
+            </local:SettingsCard>
+
+        </StackPanel>
+    </Grid>
+</Page>

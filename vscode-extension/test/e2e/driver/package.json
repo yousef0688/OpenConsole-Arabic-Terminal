@@ -1,0 +1,9 @@
+{
+  "name": "openconsole-e2e-driver",
+  "displayName": "OpenConsole end-to-end driver (tests only)",
+  "version": "0.0.1",
+  "publisher": "openconsole-tests",
+  "engines": { "vscode": "^1.90.0" },
+  "main": "./extension.js",
+  "activationEvents": ["onStartupFinished"]
+}
