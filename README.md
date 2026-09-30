@@ -34,7 +34,7 @@
 
 <p align="center">
   Built on <a href="https://github.com/microsoft/terminal"><b>microsoft/terminal</b></a> ·
-  works with <a href="https://github.com/h4ni0/pi">pi</a>, <a href="https://opencode.ai">opencode</a> and <a href="https://code.claude.com/docs">Claude Code</a>
+  works with <a href="https://github.com/earendil-works/pi">pi</a>, <a href="https://opencode.ai">opencode</a> and <a href="https://code.claude.com/docs">Claude Code</a>
 </p>
 
 ---
@@ -47,12 +47,12 @@ that do not connect and words that come out in reverse order.
 DirectX text renderer to lay out right-to-left text properly, fixes the keyboard and paste problems that come with a
 non-English keyboard, and comes with a two-click installer.
 
-It is used with terminal coding agents such as [pi](https://github.com/h4ni0/pi), [opencode](https://opencode.ai) and
-[Claude Code](https://code.claude.com/docs); pi and Claude Code are shown [below](#before-and-after).
+It is used with terminal coding agents such as [pi](https://github.com/earendil-works/pi), [opencode](https://opencode.ai) and
+[Claude Code](https://code.claude.com/docs); they are all shown [below](#before-and-after).
 
 ## Contents
 
-- [Before and after](#before-and-after): [PowerShell](#powershell), [Claude Code](#claude-code), [pi](#pi)
+- [Before and after](#before-and-after): [PowerShell](#powershell), [Claude Code](#claude-code), [pi](#pi), [opencode](#opencode)
 - [Features](#features)
 - [Install](#install): [download](#option-1-download-easiest), [build it yourself](#option-2-build-it-yourself), [what the installer changes](#what-the-installer-does), [options](#installer-options), [update and remove](#updating-and-removing)
 - [Using OpenConsole](#using-openconsole): [starting it](#starting-it), [the right-click menu](#the-right-click-menu), [your own shortcut](#your-own-shortcut), [keyboard shortcuts](#keyboard-and-clipboard), [pasting screenshots](#pasting-screenshots)
@@ -66,13 +66,13 @@ It is used with terminal coding agents such as [pi](https://github.com/h4ni0/pi)
 
 ## Before and after
 
-The same commands in the same font and window size. Left: the original OpenConsole. Right: this fork.
+The same commands, the same window size and the same font (Consolas). Left: the original Windows console (`conhost.exe` of Windows 11). Right: OpenConsole.
 
 ### PowerShell
 
 | Original | OpenConsole |
 | :---: | :---: |
-| ![PowerShell in the original OpenConsole: letters are disconnected and words are reversed](doc/images/openconsole/powershell-before.png) | ![PowerShell in OpenConsole: connected letters in the right order](doc/images/openconsole/powershell-after.png) |
+| ![PowerShell in the original Windows console: the Arabic comes out backwards, letters and words in reverse order](doc/images/openconsole/powershell-before.png) | ![PowerShell in OpenConsole: connected letters in the right order](doc/images/openconsole/powershell-after.png) |
 
 ### Claude Code
 
@@ -81,13 +81,14 @@ terminal that cannot. OpenConsole notices that and only joins the letters instea
 
 | Original | OpenConsole |
 | :---: | :---: |
-| ![Claude Code in the original OpenConsole: disconnected letters](doc/images/openconsole/claude-before.png) | ![Claude Code in OpenConsole: connected letters](doc/images/openconsole/claude-after.png) |
+| ![Claude Code in the original Windows console: stretched, badly joined letters](doc/images/openconsole/claude-before.png) | ![Claude Code in OpenConsole: connected letters](doc/images/openconsole/claude-after.png) |
 
 ### pi
 
-OpenConsole is used with [pi](https://github.com/h4ni0/pi). pi is a coding agent that runs in the terminal
-([earendil-works/pi](https://github.com/earendil-works/pi)); the screenshot shows it with the extensions of the repository linked
-above. Below is the same pi with the same Arabic sentence typed into its input box. Left: Windows Terminal. Right: OpenConsole.
+[pi](https://github.com/earendil-works/pi) is a coding agent that runs in the terminal. It is one example among many: OpenConsole is
+not made for pi and treats it like any other program. Below is the same pi with the same Arabic sentence typed into its input box.
+Left: Windows Terminal. Right: OpenConsole. The look of pi in this screenshot is taken from
+[h4ni0/pi](https://github.com/h4ni0/pi).
 
 ![pi in Windows Terminal (left) and in OpenConsole (right): the Arabic sentence comes out backwards on the left and correct on the right](doc/images/openconsole/pi-comparison.png)
 
@@ -101,6 +102,13 @@ above. Below is the same pi with the same Arabic sentence typed into its input b
   in the cell where pi put it, which for an Arabic sentence is on the right, next to the first word. See
   [Known limitations](#known-limitations).
 
+### opencode
+
+[opencode](https://opencode.ai) is an open source coding agent that runs in the terminal. Here is its start screen in OpenConsole, with
+an Arabic sentence typed into the prompt box: the letters are connected and the words are in the right order.
+
+![opencode in OpenConsole: the Arabic sentence typed into its prompt box has connected letters in the right order](doc/images/openconsole/opencode.png)
+
 ## Features
 
 ### Arabic and Hebrew text
@@ -113,7 +121,7 @@ above. Below is the same pi with the same Arabic sentence typed into its input b
 - **The cursor follows the text.** A bar cursor sits at the insertion point of a right-to-left word, not at the far end of it.
 - **Lines without right-to-left text are drawn exactly as before**, so English output pays nothing for this.
 - **Apps that reorder text themselves.** While `claude.exe` runs in a window, OpenConsole switches to a mode that keeps its order and only fixes the letter shapes. More programs can be added ([details](#programs-that-reorder-text-themselves)).
-- **Coding agents.** Works with [pi](#pi), [opencode](https://opencode.ai) and Claude Code. pi writes in reading order and needs nothing set; Claude Code is detected automatically ([examples](#before-and-after)).
+- **Coding agents.** Works with [pi](#pi), [opencode](#opencode) and Claude Code. pi writes in reading order and needs nothing set; Claude Code is detected automatically ([examples](#before-and-after)).
 
 The console buffer still stores text in logical order, like every other console. Nothing about the data changes; only how it is drawn.
 
@@ -485,7 +493,7 @@ time here and come out in reverse word order. Turn such an extension off when yo
 
 | What you see | Why | What to do |
 | --- | --- | --- |
-| Letters are not connected and words are reversed, as in the "Original" pictures | The DirectX renderer is off (`UseDx` is missing). This happens when you start an `OpenConsole.exe` that the installer did not configure, for example a copy in another folder. | Start the installed shortcut, or run the installer, or set `UseDx = 1` in the key that matches the shortcut name or the exe path. |
+| The Arabic comes out backwards, as in the "Original" pictures | The DirectX renderer is off (`UseDx` is missing). This happens when you start an `OpenConsole.exe` that the installer did not configure, for example a copy in another folder. | Start the installed shortcut, or run the installer, or set `UseDx = 1` in the key that matches the shortcut name or the exe path. |
 | Arabic looks squeezed, letters merge or vanish | The main font carries its own Arabic letters (for example `CaskaydiaCove NFM`). | Set the font back to Consolas, Cascadia Mono or Lucida Console ([Choosing a font](#choosing-a-font)). |
 | Your font, size or colors are ignored, or a window opens huge or tiny | The shortcut file stores its own settings ([note above](#where-the-settings-live)). | Run the installer again. From now on choose **current window only** in Properties. |
 | Icons show as a diamond with a question mark | The main font has no icons. | Set `IconFont` ([Icons](#icons-nerd-fonts)). |
@@ -611,7 +619,7 @@ folders, with their own install location and their own VS Code extensions folder
 ## Known limitations
 
 - **Only the classic console window is built and tested** (`OpenConsole.exe`). The Windows Terminal app (tabs, panes) was not built. The renderer is shared with it, but that is untested, and the automatic switch for `claude.exe` exists only in the console window.
-- Tested on Windows 11 (x64) with Visual Studio Build Tools 2026, Consolas, Debug and Release builds, PowerShell, Claude Code 2.1.284 and pi 0.87.1. Windows 10 and other fonts are untested. Arabic is the script this was developed and checked with; Hebrew goes through the same code.
+- Tested on Windows 11 (x64) with Visual Studio Build Tools 2026, Consolas, Debug and Release builds, PowerShell, Claude Code 2.1.284, pi 0.87.1 and opencode. Windows 10 and other fonts are untested. Arabic is the script this was developed and checked with; Hebrew goes through the same code.
 - The direction of a line is always left-to-right: an Arabic line starts at the left edge instead of being right-aligned.
 - Selecting *part* of an Arabic word with the mouse may highlight cells that do not line up with the letters.
 - The cursor may jump to the other end of a word right after you type a space in Arabic text.

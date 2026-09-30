@@ -34,7 +34,7 @@
 
 <p align="center" dir="rtl">
   مبني على <a href="https://github.com/microsoft/terminal"><b>microsoft/terminal</b></a> ·
-  يعمل مع <a href="https://github.com/h4ni0/pi">pi</a> و<a href="https://opencode.ai">opencode</a> و<a href="https://code.claude.com/docs">Claude Code</a>
+  يعمل مع <a href="https://github.com/earendil-works/pi">pi</a> و<a href="https://opencode.ai">opencode</a> و<a href="https://code.claude.com/docs">Claude Code</a>
 </p>
 
 ---
@@ -49,12 +49,12 @@
 رسم النص (DirectX) أن يعرض النص من اليمين إلى اليسار بشكل صحيح، وأصلحنا مشاكل لوحة المفاتيح واللصق مع اللغات غير الإنجليزية،
 وأضفنا مثبّتاً يعمل بضغطتين.
 
-يُستعمل مع وكلاء البرمجة في الطرفية مثل [pi](https://github.com/h4ni0/pi) و[opencode](https://opencode.ai)
-و[Claude Code](https://code.claude.com/docs)؛ وpi وClaude Code موضّحان في [قبل وبعد](#قبل-وبعد).
+يُستعمل مع وكلاء البرمجة في الطرفية مثل [pi](https://github.com/earendil-works/pi) و[opencode](https://opencode.ai)
+و[Claude Code](https://code.claude.com/docs)؛ وكلها موضّحة في [قبل وبعد](#قبل-وبعد).
 
 ## المحتويات
 
-- [قبل وبعد](#قبل-وبعد): [PowerShell](#powershell)، [Claude Code](#claude-code)، [pi](#pi)
+- [قبل وبعد](#قبل-وبعد): [PowerShell](#powershell)، [Claude Code](#claude-code)، [pi](#pi)، [opencode](#opencode)
 - [المزايا](#المزايا)
 - [التثبيت](#التثبيت)
 - [الاستخدام](#الاستخدام): [التشغيل](#التشغيل)، [قائمة الزر الأيمن](#قائمة-الزر-الأيمن)، [اختصارك الخاص](#اختصارك-الخاص)، [لوحة المفاتيح واللصق](#لوحة-المفاتيح-واللصق)، [لصق لقطات الشاشة](#لصق-لقطات-الشاشة)
@@ -72,7 +72,7 @@
 
 <div dir="rtl" align="right">
 
-الأوامر نفسها والخط نفسه وحجم النافذة نفسه. على اليسار: OpenConsole الأصلي. على اليمين: هذه النسخة.
+الأوامر نفسها وحجم النافذة نفسه والخط نفسه (Consolas). على اليسار: طرفية ويندوز الأصلية (`conhost.exe` في Windows 11). على اليمين: OpenConsole.
 
 </div>
 
@@ -80,7 +80,7 @@
 
 | الأصلي | OpenConsole |
 | :---: | :---: |
-| ![PowerShell في OpenConsole الأصلي: الحروف منفصلة والكلمات معكوسة](doc/images/openconsole/powershell-before.png) | ![PowerShell في OpenConsole: حروف متصلة بالترتيب الصحيح](doc/images/openconsole/powershell-after.png) |
+| ![PowerShell في طرفية ويندوز الأصلية: العربية تخرج معكوسة، الحروف والكلمات بترتيب معاكس](doc/images/openconsole/powershell-before.png) | ![PowerShell في OpenConsole: حروف متصلة بالترتيب الصحيح](doc/images/openconsole/powershell-after.png) |
 
 ### Claude Code
 
@@ -93,15 +93,15 @@ OpenConsole يكتشف هذا ويكتفي بوصل الحروف بدل ترتي
 
 | الأصلي | OpenConsole |
 | :---: | :---: |
-| ![Claude Code في OpenConsole الأصلي: حروف منفصلة](doc/images/openconsole/claude-before.png) | ![Claude Code في OpenConsole: حروف متصلة](doc/images/openconsole/claude-after.png) |
+| ![Claude Code في طرفية ويندوز الأصلية: حروف ممطوطة ومتصلة بشكل خاطئ](doc/images/openconsole/claude-before.png) | ![Claude Code في OpenConsole: حروف متصلة](doc/images/openconsole/claude-after.png) |
 
 ### pi
 
 <div dir="rtl" align="right">
 
-يُستعمل OpenConsole مع [pi](https://github.com/h4ni0/pi). pi وكيل برمجة يعمل داخل الطرفية
-([earendil-works/pi](https://github.com/earendil-works/pi))، وتُظهره اللقطة مع إضافات المستودع المرتبط أعلاه. هذا هو pi نفسه
-والجملة العربية نفسها مكتوبة في مربع الإدخال. على اليسار: Windows Terminal. على اليمين: OpenConsole.
+[pi](https://github.com/earendil-works/pi) وكيل برمجة يعمل داخل الطرفية. هو مثال واحد من أمثلة كثيرة: OpenConsole ليس مصنوعاً
+لأجل pi ويعامله مثل أي برنامج آخر. هذا هو pi نفسه والجملة العربية نفسها مكتوبة في مربع الإدخال. على اليسار: Windows Terminal.
+على اليمين: OpenConsole. شكل pi في هذه اللقطة مأخوذ من [h4ni0/pi](https://github.com/h4ni0/pi).
 
 </div>
 
@@ -118,6 +118,21 @@ OpenConsole يكتشف هذا ويكتفي بوصل الحروف بدل ترتي
 - الكتلة الظاهرة بجانب النص هي مؤشر pi نفسه: مسافة معكوسة الألوان يرسمها pi بعد آخر حرف. يتركها OpenConsole في الخانة التي وضعها
   فيها pi، وهي في الجملة العربية على اليمين بجانب أول كلمة. انظر [القيود المعروفة](#القيود-المعروفة).
 
+</div>
+
+### opencode
+
+<div dir="rtl" align="right">
+
+[opencode](https://opencode.ai) وكيل برمجة مفتوح المصدر يعمل داخل الطرفية. هذه شاشة البداية فيه داخل OpenConsole، وقد كُتبت جملة
+عربية في مربع الإدخال: الحروف متصلة والكلمات بالترتيب الصحيح.
+
+</div>
+
+![opencode في OpenConsole: الجملة العربية في مربع الإدخال بحروف متصلة وبترتيب صحيح](doc/images/openconsole/opencode.png)
+
+<div dir="rtl" align="right">
+
 ## المزايا
 
 ### النص العربي والعبري
@@ -130,7 +145,7 @@ OpenConsole يكتشف هذا ويكتفي بوصل الحروف بدل ترتي
 - **المؤشر يتبع النص.** مؤشر الخط العمودي يقف في مكان الإدخال داخل الكلمة العربية، لا في طرفها البعيد.
 - **الأسطر التي لا فيها حروف من اليمين إلى اليسار تُرسم كما كانت تماماً**، فلا يدفع النص الإنجليزي أي ثمن.
 - **برامج ترتّب النص بنفسها.** طالما يعمل `claude.exe` في النافذة، يتحول OpenConsole إلى وضع يحافظ على ترتيبه ويكتفي بتصحيح أشكال الحروف. يمكن إضافة برامج أخرى ([التفاصيل](#برامج-ترتب-النص-بنفسها)).
-- **وكلاء البرمجة.** يعمل مع [pi](#pi) و[opencode](https://opencode.ai) وClaude Code. pi يكتب بترتيب القراءة ولا يحتاج إلى ضبط شيء؛ وClaude Code يُكتشف تلقائياً ([أمثلة](#قبل-وبعد)).
+- **وكلاء البرمجة.** يعمل مع [pi](#pi) و[opencode](#opencode) وClaude Code. pi يكتب بترتيب القراءة ولا يحتاج إلى ضبط شيء؛ وClaude Code يُكتشف تلقائياً ([أمثلة](#قبل-وبعد)).
 
 مخزن الطرفية ما زال يحفظ النص بترتيبه المنطقي مثل أي طرفية أخرى. لا شيء يتغير في البيانات، فقط في طريقة رسمها.
 
@@ -538,7 +553,7 @@ constexpr std::wstring_view visualBidiApps[] = { L"claude.exe" };
 
 | ما تراه | السبب | ما تفعله |
 | --- | --- | --- |
-| الحروف غير متصلة والكلمات معكوسة كما في صور «الأصلي» | محرك DirectX متوقف (`UseDx` غير موجودة). يحدث عندما تشغّل `OpenConsole.exe` لم يضبطه المثبّت، مثل نسخة في مجلد آخر. | شغّل الاختصار المثبت، أو شغّل المثبّت، أو اضبط `UseDx = 1` في المفتاح المطابق لاسم الاختصار أو لمسار الملف. |
+| العربية تخرج معكوسة كما في صور «الأصلي» | محرك DirectX متوقف (`UseDx` غير موجودة). يحدث عندما تشغّل `OpenConsole.exe` لم يضبطه المثبّت، مثل نسخة في مجلد آخر. | شغّل الاختصار المثبت، أو شغّل المثبّت، أو اضبط `UseDx = 1` في المفتاح المطابق لاسم الاختصار أو لمسار الملف. |
 | العربي يبدو مضغوطاً، والحروف تندمج أو تختفي | الخط الأساسي يحمل حروفاً عربية خاصة به (مثل `CaskaydiaCove NFM`). | أعد الخط إلى Consolas أو Cascadia Mono أو Lucida Console ([اختيار الخط](#اختيار-الخط)). |
 | خطك أو حجمك أو ألوانك مُهمَلة، أو تفتح النافذة كبيرة جداً أو صغيرة جداً | ملف الاختصار يخزّن إعداداته ([الملاحظة أعلاه](#أين-تخزن-الإعدادات)). | شغّل المثبّت مرة ثانية. ومن الآن اختر **النافذة الحالية فقط** في Properties. |
 | الأيقونات تظهر على شكل معيّن فيه علامة استفهام | الخط الأساسي لا يحتوي الأيقونات. | اضبط `IconFont` ([الأيقونات](#الأيقونات)). |
@@ -678,7 +693,7 @@ gh release create v1.0.0 dist\OpenConsole-x64.zip dist\OpenConsole-x64.zip.sha25
 ## القيود المعروفة
 
 - **الذي يُبنى ويُجرَّب هو نافذة الطرفية الكلاسيكية فقط** (`OpenConsole.exe`). تطبيق Windows Terminal (التبويبات واللوحات) لم يُبنَ. المحرك مشترك معه لكن هذا لم يُجرَّب، والتبديل التلقائي لـ `claude.exe` موجود في نافذة الطرفية فقط.
-- جُرِّب على Windows 11 (x64) مع Visual Studio Build Tools 2026 وخط Consolas وبناءَي Debug وRelease وPowerShell وClaude Code 2.1.284 وpi 0.87.1. لم يُجرَّب على Windows 10 ولا مع خطوط أخرى. العربية هي اللغة التي طُوّر بها واختُبر؛ والعبرية تمر بالكود نفسه.
+- جُرِّب على Windows 11 (x64) مع Visual Studio Build Tools 2026 وخط Consolas وبناءَي Debug وRelease وPowerShell وClaude Code 2.1.284 وpi 0.87.1 وopencode. لم يُجرَّب على Windows 10 ولا مع خطوط أخرى. العربية هي اللغة التي طُوّر بها واختُبر؛ والعبرية تمر بالكود نفسه.
 - اتجاه السطر دائماً من اليسار إلى اليمين: السطر العربي يبدأ من الحافة اليسرى بدل أن يُحاذى إلى اليمين.
 - تحديد *جزء* من كلمة عربية بالفأرة قد يظلل خانات لا تنطبق على الحروف.
 - قد يقفز المؤشر إلى الطرف الآخر من الكلمة مباشرة بعد كتابة مسافة في نص عربي.
