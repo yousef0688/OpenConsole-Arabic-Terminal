@@ -882,6 +882,18 @@ static constexpr bool isArabicJoiningLetter(const wchar_t ch) noexcept
            (ch >= 0x08A0 && ch <= 0x08C9); // Arabic Extended-A (letters only)
 }
 
+// Returns true for the characters that make up a word of a right-to-left script: The letters and their marks, and the
+// punctuation of those scripts. The digits are excluded: They're written from left to right even inside of Arabic text,
+// and shaping them as right-to-left text would turn 2026 into 6202.
+static constexpr bool isRightToLeftWordCharacter(const wchar_t ch) noexcept
+{
+    return isPotentialRtlCharacter(ch) &&
+           !(ch >= 0x0660 && ch <= 0x0669) && // Arabic-Indic digits
+           !(ch >= 0x06F0 && ch <= 0x06F9) && // Extended Arabic-Indic digits
+           !(ch >= 0x202A && ch <= 0x202E) && // explicit embeddings and overrides (not part of a word)
+           ch != 0x200F; // right-to-left mark
+}
+
 void AtlasEngine::SetBidiMode(const BidiMode mode) noexcept
 {
     _api.bidiMode = mode;
@@ -926,6 +938,13 @@ void AtlasEngine::_flushBufferLine()
         if (std::any_of(_api.bufferLine.begin(), _api.bufferLine.end(), isArabicJoiningLetter)) [[unlikely]]
         {
             _mapVisualBufferLine();
+            return;
+        }
+        break;
+    case BidiMode::Words:
+        if (std::any_of(_api.bufferLine.begin(), _api.bufferLine.end(), isRightToLeftWordCharacter)) [[unlikely]]
+        {
+            _mapWordsBufferLine();
             return;
         }
         break;
@@ -1027,6 +1046,60 @@ void AtlasEngine::_mapVisualBufferLine()
     for (const auto& r : runs)
     {
         _mapBufferLineRange(r.textPosition, r.textEnd, r.level != 0);
+    }
+}
+
+// Maps a buffer line in which every word of right-to-left letters is laid out on its own (BidiMode::Words).
+//
+// The Unicode Bidirectional Algorithm reorders a whole stretch of right-to-left text, with the words of an Arabic
+// sentence in between. In a terminal, where every row begins at the left edge, that has two unpleasant consequences:
+// Text that is being typed moves to the right with every letter (the stretch grows at its right end, and its first
+// word is drawn there), and a sentence that wraps onto the next row is cut in the middle of such a stretch, so that
+// its words end up in places that look random. Here, only the letters of a word are reversed. Each word is shaped as
+// right-to-left text (which is what joins the letters up) and mirrored inside the columns it occupies, and the words
+// themselves, the spaces, the numbers and the Latin text stay where they are in the buffer. The rows we produce
+// are still a plain sequence of glyphs that gets drawn from left to right, so everything operating on logical
+// cells (the selection, the backgrounds, the cursor) works as it does for _mapBidiBufferLine().
+void AtlasEngine::_mapWordsBufferLine()
+{
+    const auto len = _api.bufferLine.size();
+    const auto columns = _api.bufferLineColumn.data();
+    auto& runs = _api.bidiRuns;
+
+    // Split the line into alternating runs of right-to-left word characters (level 1) and everything else (level 0).
+    // A cell can consist of multiple characters (letter + marks, surrogate pairs), all in the same column. The first
+    // one decides, which keeps a grapheme cluster from being split across runs.
+    runs.clear();
+    for (size_t i = 0; i < len;)
+    {
+        auto next = i + 1;
+        while (next < len && columns[next] == columns[i])
+        {
+            ++next;
+        }
+
+        const auto rtl = isRightToLeftWordCharacter(_api.bufferLine[i]);
+        if (!runs.empty() && (runs.back().level != 0) == rtl)
+        {
+            runs.back().textEnd = gsl::narrow_cast<u32>(next);
+        }
+        else
+        {
+            runs.push_back({ gsl::narrow_cast<u32>(i), gsl::narrow_cast<u32>(next), rtl ? u8{ 1 } : u8{ 0 } });
+        }
+
+        i = next;
+    }
+
+    auto& row = *_p.rows[_api.lastPaintBufferLineCoord.y];
+    for (const auto& run : runs)
+    {
+        const auto rtl = run.level != 0;
+        if (rtl)
+        {
+            row.rtlColumnRanges.push_back({ columns[run.textPosition], columns[run.textEnd] });
+        }
+        _mapBufferLineRange(run.textPosition, run.textEnd, rtl);
     }
 }
 

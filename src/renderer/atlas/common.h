@@ -332,6 +332,10 @@ namespace Microsoft::Console::Render::Atlas
         // The application already put the text into its visual order, as it does for terminals without bidi support.
         // The text is drawn as given: Only the letters of Arabic words are joined up, which requires them to be shaped.
         Visual = 2,
+        // Every word of right-to-left letters is shaped and mirrored on its own, inside the columns it occupies. The words
+        // (and everything between them) stay in the order they're stored in. Nothing before a word ever moves while one
+        // types it, and a line that wraps reads from top to bottom like any other text.
+        Words = 3,
     };
 
     // A run of characters in a buffer line that share the same resolved bidi level.

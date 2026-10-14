@@ -52,8 +52,11 @@ Some applications, for instance Claude Code, assume a terminal without bidirecti
 | `0` | Text is drawn in the order it's stored. |
 | `1` (default) | The terminal reorders the text, as described above. |
 | `2` | The text is already in visual order. `_mapVisualBufferLine` only joins up the letters: Every word of Arabic letters is reversed back (cell by cell, so that combining marks stay with their letter), shaped as right-to-left text, and the glyphs are put back into the cells they came from. |
+| `3` | Every word of right-to-left letters is shaped and mirrored on its own, inside its own columns (`_mapWordsBufferLine`). The words, the spaces, the numbers and the Latin text stay in the order they're stored in. |
 
-With the default mode, the window switches to mode `2` by itself while an application that is known to reorder the text is attached to its console (currently `claude.exe`, see `BidiModeProvider` in `window.cpp`), and back when it exits. The engine asks for the mode at the start of every frame (`SetBidiModeProvider`) and redraws all rows when it changes. Rows that were written by such an application keep the visual order in the buffer, so they look wrong after it exits.
+Mode `3` is for text boxes that an application redraws while one types. With mode `1`, a whole stretch of Arabic text is reversed as one run, so it is drawn growing from its right end: Everything typed so far moves one cell to the right with every letter, and a text that wraps onto the next row is cut in the middle of the run, which scatters its words. With mode `3` only the word being typed changes, and a text reads from top to bottom, as the same text in English does. The price is that the words of an Arabic sentence follow each other from left to right (every word is right-to-left, the sentence is not). Digits stay left to right.
+
+With the default mode, the window switches to another mode by itself while an application that is known to need it is attached to its console, and back when it exits (see `BidiModeProvider` in `window.cpp`): Mode `2` for `claude.exe`, which reorders the text itself, and mode `3` for `opencode.exe` and for pi (a Node.js program, found by its command line: `pi-launcher.js` or `pi-coding-agent`). The engine asks for the mode at the start of every frame (`SetBidiModeProvider`) and redraws all rows when it changes. Rows that were written by an application that reorders the text keep the visual order in the buffer, so they look wrong after it exits.
 
 ## BackendD3D
 

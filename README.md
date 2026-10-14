@@ -96,11 +96,16 @@ Left: Windows Terminal. Right: OpenConsole. The look of pi in this screenshot is
 - **OpenConsole (right)** starts the sentence on the right, joins the letters and keeps the words in the right order.
 - The small icons in pi's status line (folder, git branch, model and more) are Nerd Font symbols. With
   [`IconFont`](#icons-nerd-fonts) set, OpenConsole draws them while the text keeps its normal font.
-- pi writes what you type in reading order, so the normal mode is the right one and there is nothing to set. See
-  [Programs that reorder text themselves](#programs-that-reorder-text-themselves) for a pi extension that reorders Arabic on its own.
+- **This screenshot was taken before the words mode existed.** Here a whole Arabic sentence is reordered as one stretch. In a
+  text box that has a price: everything typed so far moves one cell to the right with every letter, and a long text that wraps
+  is cut in the middle of that stretch, so its words end up in places that look random. OpenConsole now switches to the
+  [words mode](#words-mode-for-coding-agents) by itself while pi runs (pi is found by its command line). Every word is still joined and
+  right-to-left, but the words keep the order you typed them in: nothing moves while you type, and a long text reads from top to
+  bottom. There is nothing to set.
 - The block next to the text is pi's own cursor: an inverted space that pi draws after the last letter. OpenConsole leaves it
-  in the cell where pi put it, which for an Arabic sentence is on the right, next to the first word. See
-  [Known limitations](#known-limitations).
+  in the cell where pi put it, which in the words mode is right after the last word. See [Known limitations](#known-limitations).
+- A pi extension that reorders Arabic words on its own (made for terminals without right-to-left support) is not needed here and
+  would be reordered a second time: see [Programs that reorder text themselves](#programs-that-reorder-text-themselves).
 
 ### opencode
 
@@ -121,7 +126,8 @@ an Arabic sentence typed into the prompt box: the letters are connected and the 
 - **The cursor follows the text.** A bar cursor sits at the insertion point of a right-to-left word, not at the far end of it.
 - **Lines without right-to-left text are drawn exactly as before**, so English output pays nothing for this.
 - **Apps that reorder text themselves.** While `claude.exe` runs in a window, OpenConsole switches to a mode that keeps its order and only fixes the letter shapes. More programs can be added ([details](#programs-that-reorder-text-themselves)).
-- **Coding agents.** Works with [pi](#pi), [opencode](#opencode) and Claude Code. pi writes in reading order and needs nothing set; Claude Code is detected automatically ([examples](#before-and-after)).
+- **Text boxes that do not move.** While [pi](#pi) or [opencode](#opencode) runs, OpenConsole switches to the [words mode](#words-mode-for-coding-agents): every Arabic word is joined and right-to-left, the words stay in the order you typed them, so nothing moves while you type and a long text reads from top to bottom.
+- **Coding agents.** Works with [pi](#pi), [opencode](#opencode) and Claude Code. All three are detected automatically ([examples](#before-and-after)).
 
 The console buffer still stores text in logical order, like every other console. Nothing about the data changes; only how it is drawn.
 
@@ -167,7 +173,7 @@ To add just that tab, or to add it later, double-click **`Install-VSCode.cmd`**.
 > **Run anyway**. The installer is the plain, readable script `install.ps1`.
 
 The zip contains ten files: `Install.cmd`, `install.ps1`, `Uninstall.cmd`, `OpenConsole.exe`, `Install-VSCode.cmd`,
-`install-vscode.ps1`, `openconsole-terminal-<version>.vsix` (the VS Code extension), `README.txt`, `LICENSE` and `NOTICE.md`.
+`install-vscode.ps1`, `openconsole-<version>.vsix` (the VS Code extension), `README.txt`, `LICENSE` and `NOTICE.md`.
 To check that the download is intact, compare its hash with the `OpenConsole-x64.zip.sha256` file on the Releases page:
 
 ```powershell
@@ -217,7 +223,7 @@ Everything is per user. This is the complete list of what it creates, and what `
 | Shortcuts | `OpenConsole.lnk` on the desktop and in the Start menu |
 | Right-click entries | `HKCU\Software\Classes\Directory\shell\OpenConsole` and `HKCU\Software\Classes\Directory\Background\shell\OpenConsole` |
 | Settings | `HKCU\Console\OpenConsole` and `HKCU\Console\C:_Users_<you>_AppData_Local_Programs_OpenConsole_OpenConsole.exe` |
-| The VS Code tab | the extension `openconsole.openconsole-terminal` in `%USERPROFILE%\.vscode\extensions` (VS Code puts it there) |
+| The VS Code tab | the extension `openconsole.openconsole` in `%USERPROFILE%\.vscode\extensions` (VS Code puts it there) |
 
 Nothing outside your user profile is written, and nothing in `HKLM`. The only other thing OpenConsole ever creates is the
 folder of pasted screenshots ([details](#pasting-screenshots)), which the uninstaller leaves alone.
@@ -231,7 +237,7 @@ Give them to `Install.cmd` (from the zip) or to `install.ps1`:
 | `-FontName "Lucida Console"` | Another fixed-width font. Read [Choosing a font](#choosing-a-font) first. |
 | `-FontSize 16` | Font size in points (default 12). |
 | `-IconFont "CaskaydiaCove NFM"` | A font for the icons only (a Nerd Font, for example). See [Icons](#icons-nerd-fonts). |
-| `-BidiMode 2` | Force one of the bidi modes (0, 1 or 2). Leave it alone unless you know why: [Settings reference](#settings-reference). |
+| `-BidiMode 2` | Force one of the bidi modes (0, 1, 2 or 3). Leave it alone unless you know why: [Settings reference](#settings-reference). |
 | `-Shell pwsh.exe` | Start PowerShell 7 (or `cmd.exe`) instead of Windows PowerShell. Only `powershell.exe` is tested. |
 | `-Name "My Console"` | The name of the shortcuts, the right-click entries and the settings key (default `OpenConsole`). Do not rename a shortcut afterwards: Windows looks the settings up by that name. |
 | `-InstallDir C:\Tools\OpenConsole` | Install somewhere else. |
@@ -356,11 +362,14 @@ this, double-click **`Install-VSCode.cmd`** (it also finds VS Code Insiders). Th
 
 - **Remove it:** `Install-VSCode.cmd -Uninstall`, or `Uninstall.cmd`, which removes everything.
 - **From the source code:** `.\install-vscode.ps1` builds the extension (it needs Node.js and the C++ build tools) and installs it.
-- **By hand**, with the `.vsix` file (it is also on the Releases page on its own): `code --install-extension openconsole-terminal-0.1.0.vsix`.
+- **From the Marketplace:** search for **OpenConsole** in the Extensions view of VS Code (`Ctrl+Shift+X`), or run `code --install-extension openconsole.openconsole`.
+- **By hand**, with the `.vsix` file (it is also on the Releases page on its own): `code --install-extension openconsole-<version>.vsix`.
 - **A portable VS Code:** `Install-VSCode.cmd -Cli C:\path\to\bin\code.cmd`.
 
 How to build it, its settings and its limits are in [`vscode-extension/README.md`](vscode-extension/README.md). It is not the
-built-in terminal: there are no links, splits or shell integration.
+built-in terminal: there are no links or shell integration, and splits are side by side only. What it has besides the Arabic layout:
+several terminals with a list and profiles, split, a grey suggestion of what you are going to type (the **Right Arrow** types it),
+and the items of the "..." menu (scroll to a command, run the active file or the selected text, recent directory, recent command).
 
 **Why an extension, and not a setting?** VS Code draws its terminal itself, so `OpenConsole.exe` cannot draw inside it. Turning the
 GPU renderer off (`terminal.integrated.gpuAcceleration` = `off`) is the closest setting: letters inside a word join, but the words
@@ -426,10 +435,11 @@ also reads.
 | Value | Type | Meaning |
 | --- | --- | --- |
 | `UseDx` | DWORD | `1` = use the DirectX renderer. **Required** for all the Arabic support; the old GDI renderer is unchanged. |
-| `BidiMode` (missing) | DWORD | Automatic. Reorder right-to-left text, except while a program from [the list](#programs-that-reorder-text-themselves) runs in the window. |
+| `BidiMode` (missing) | DWORD | Automatic. Reorder right-to-left text, except while a program from [the lists](#programs-that-reorder-text-themselves) runs in the window (`claude.exe`: mode 2; pi and opencode: mode 3). |
 | `BidiMode = 0` | DWORD | No bidirectional processing. Text is drawn in stored order, like the original. |
 | `BidiMode = 1` | DWORD | Always reorder right-to-left text. |
 | `BidiMode = 2` | DWORD | The program already reordered its text: keep the order, only join the letters. |
+| `BidiMode = 3` | DWORD | Words mode: every word of right-to-left letters is joined and mirrored on its own, the words keep the order they were typed in ([details](#words-mode-for-coding-agents)). |
 | `IconFont` | String | A font that draws only the icons ([Icons](#icons-nerd-fonts)). Up to 31 characters. Missing = none. |
 | `FaceName` | String | The main font. Up to 31 characters. [Choosing a font](#choosing-a-font). |
 | `FontSize` | DWORD | Size in points times 65536: `0xC0000` is 12 pt, `0xE0000` is 14 pt. |
@@ -485,9 +495,33 @@ Add a name, rebuild, and reinstall. The mode is switched for the whole window wh
 If you would rather decide yourself, set `BidiMode` in the settings key of a shortcut (`HKCU\Console\<shortcut name>`): `2` for
 a shortcut that only runs such a program, or `1` to never switch.
 
-[pi](#pi) is not on this list: it writes text in reading order, and the normal mode shows it correctly.
+[pi](#pi) and [opencode](#opencode) are not on this list: they write text in reading order. They are on the list of the
+[words mode](#words-mode-for-coding-agents) below.
 A pi extension that reorders Arabic words itself, made for terminals without right-to-left support, would be reordered a second
 time here and come out in reverse word order. Turn such an extension off when you use OpenConsole.
+
+### Words mode for coding agents
+
+Coding agents such as pi and opencode write what you type in reading order and redraw their text box on every key. With the
+normal mode a whole stretch of Arabic text is reordered as one run. In a terminal, where every row starts at the left edge, that
+has two effects: the run grows at its right end, so everything typed so far moves one cell to the right with every letter, and a
+text that wraps onto the next row is cut in the middle of the run, so its words end up in places that look random.
+
+In the **words mode** (`BidiMode = 3`) only the letters of a word are reversed. Each word is joined and right-to-left, and the
+words, the spaces, the numbers and the Latin text stay in the order they were typed. Nothing before the word you are typing moves, and
+a long text reads from top to bottom like English does. The price: the words of an Arabic sentence follow each other from left to
+right. Digits always stay left to right.
+
+The window switches to this mode by itself, as it does for `claude.exe`, while one of these programs is attached to it:
+`opencode.exe` is found by its name, and pi (a Node.js program, so just `node.exe`) by what its command line mentions:
+
+```cpp
+constexpr std::wstring_view wordsBidiApps[] = { L"opencode.exe" };
+constexpr std::wstring_view wordsBidiCommandLines[] = { L"pi-launcher.js", L"pi-coding-agent" };   // for node.exe
+```
+
+Set `BidiMode = 3` in the settings key of a shortcut to use the mode for every program in it, or `1` to never switch.
+A program that reorders its text itself (`claude.exe`) wins when both are attached.
 
 ## Troubleshooting
 
@@ -498,6 +532,7 @@ time here and come out in reverse word order. Turn such an extension off when yo
 | Your font, size or colors are ignored, or a window opens huge or tiny | The shortcut file stores its own settings ([note above](#where-the-settings-live)). | Run the installer again. From now on choose **current window only** in Properties. |
 | Icons show as a diamond with a question mark | The main font has no icons. | Set `IconFont` ([Icons](#icons-nerd-fonts)). |
 | A tool prints Arabic already reversed, or reversed twice | The tool reorders text itself, or it does not. | `BidiMode = 2` when it does, `BidiMode = 1` when it does not; or add it to the list ([details](#programs-that-reorder-text-themselves)). |
+| Arabic text moves to the right with every letter I type in a coding agent, or a long text looks scattered | The normal mode reorders a whole stretch of Arabic as one run, which grows at its right end and is cut where the row wraps. | pi and opencode switch to the words mode by themselves. For another program set `BidiMode = 3` ([Words mode](#words-mode-for-coding-agents)). |
 | `Ctrl+V` pastes nothing, or a stray letter | The value `CtrlKeyShortcutsDisabled` is `1`, or the window was opened before the change. | Open a new window; check the value. `Shift+Insert` and `Ctrl+Shift+V` are equivalent. |
 | A screenshot is not pasted | The clipboard holds more than an image (text or a file as well), so that is pasted instead. Or the image was copied as something other than a bitmap. | Take the screenshot again with `Win+Shift+S`. |
 | "Windows protected your PC" | The files are not code-signed. | **More info**, then **Run anyway**. |
@@ -520,10 +555,11 @@ The change lives in the DirectX renderer, [`src/renderer/atlas`](src/renderer/at
 4. Because connected letters must not be torn apart, right-to-left text is fitted to the character grid one word at a time instead of one letter at a time.
 5. The cursor position is mapped into the mirrored run.
 6. In the "already reordered" mode (`BidiMode = 2`) the order is kept and only the letters are joined.
+7. In the words mode (`BidiMode = 3`) each word of right-to-left letters is its own run, mirrored inside its own columns, and the words stay where they are.
 
 Around the renderer:
 
-- **Choosing the mode.** The window asks, at the start of every frame, which programs are attached to its console. While one from the list is, the mode is switched and all rows are redrawn.
+- **Choosing the mode.** The window asks, at the start of every frame, which programs are attached to its console. While one from a list is (`claude.exe`; `opencode.exe`; pi, found by the command line of its `node.exe`), the mode is switched and all rows are redrawn.
 - **Icons.** The font-fallback list that DirectWrite uses gets one extra mapping, limited to the private use ranges, that points at the `IconFont`. The system fallback stays behind it.
 - **Keyboard.** A `Ctrl+letter` typed on a non-Latin layout is turned into the control character of the key's virtual-key code, and paste shortcuts are handled before the program sees them in VT input mode.
 - **Paste.** Text is delivered as plain characters, without virtual keys and without key-up events, so programs that use the kitty keyboard protocol do not receive escape sequences for `-` and similar characters.
@@ -577,7 +613,8 @@ is still open, rename the exe first and build again; the installer does the same
 
 ### Adding another program that reorders its text
 
-Add its executable name to `visualBidiApps` ([above](#programs-that-reorder-text-themselves)), rebuild, and reinstall.
+Add its executable name to `visualBidiApps` ([above](#programs-that-reorder-text-themselves)), rebuild, and reinstall. For a coding agent
+whose text box should not move while you type, add it to `wordsBidiApps` instead ([words mode](#words-mode-for-coding-agents)).
 
 ### Publishing a release
 
@@ -594,7 +631,7 @@ GitHub open **Releases**, choose **Draft a new release**, attach the zip, the `.
 the file name `OpenConsole-x64.zip`, because the button points to `releases/latest/download/OpenConsole-x64.zip`. With the GitHub CLI:
 
 ```powershell
-gh release create v1.0.0 dist\OpenConsole-x64.zip dist\OpenConsole-x64.zip.sha256 dist\openconsole-terminal-0.1.0.vsix --title "OpenConsole 1.0.0"
+gh release create v1.0.0 dist\OpenConsole-x64.zip dist\OpenConsole-x64.zip.sha256 dist\openconsole-<version>.vsix --title "OpenConsole 1.0.0"
 ```
 
 Optional: to let people install the extension from the Extensions view of VS Code (search "OpenConsole"), publish it to the
@@ -623,11 +660,12 @@ folders, with their own install location and their own VS Code extensions folder
 - The direction of a line is always left-to-right: an Arabic line starts at the left edge instead of being right-aligned.
 - Selecting *part* of an Arabic word with the mouse may highlight cells that do not line up with the letters.
 - The cursor may jump to the other end of a word right after you type a space in Arabic text.
-- Only the console's own cursor follows the text. A program that draws its cursor itself, as pi does with an inverted space after the last letter, gets it in the cell after the text, which for an Arabic sentence is on the right, next to the first word (see the [pi](#pi) screenshot).
+- Only the console's own cursor follows the text. A program that draws its cursor itself, as pi does with an inverted space after the last letter, gets it in the cell after the text. In the normal mode, for an Arabic sentence, that is on the right, next to the first word (see the [pi](#pi) screenshot); in the words mode (pi, opencode) it is right after the last word, while the next letter appears at the left end of that word.
+- In the words mode the words of an Arabic sentence follow each other from left to right (each word is right-to-left). A word that a program wraps onto the next row is cut at the row end like any other text.
 - After a program from the list above exits, its old output in the window is drawn in the normal way again and can look wrong. `cls` clears it.
 - Icons: only `CaskaydiaCove NFM` was tried as the icon font, and only the private use ranges are covered. A few symbols that the Nerd Fonts put outside them (for example the power symbols at U+23FB) still come from the regular fonts.
 - The right-click entry does not work in folders whose name contains an apostrophe (`'`). On Windows 11 it is in the full menu (**Show more options**), not in the new compact one.
-- The OpenConsole tab in VS Code is not the built-in terminal (no links, splits or shell integration), and selecting *part* of an Arabic run in it highlights columns that do not line up with the letters. Its own list is in [`vscode-extension/README.md`](vscode-extension/README.md).
+- The OpenConsole tab in VS Code is not the built-in terminal (no links or shell integration, and splits are side by side only), and selecting *part* of an Arabic run in it highlights columns that do not line up with the letters. Its own list is in [`vscode-extension/README.md`](vscode-extension/README.md).
 - Pasting an image pastes a file path, so it only helps programs that read image files by path. The image is not sent as pixels.
 - There is no tab bar: tabs belong to the Windows Terminal app, not to the console window.
 - The download is not code-signed, so Windows SmartScreen warns once (see [Install](#option-1-download-easiest)).
@@ -654,3 +692,9 @@ this code upstream.
 Issues and pull requests are welcome, especially for other right-to-left scripts, other programs that reorder their text,
 automated tests, and the limitations above. Please include a screenshot for anything visual, and say which Windows version,
 font and program you used.
+
+## Who made this
+
+I'm [yousef](https://github.com/yousef0688), and I work at
+[Software House for System Development](https://softwarehouse.com.jo/) (Arabic: دار البرمجيات لتطوير الأنظمة), a Jordanian
+software company based in Amman.

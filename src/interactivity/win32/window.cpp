@@ -51,9 +51,72 @@ namespace
     // text themselves (see BidiMode::Visual). Compared with the file name of the process, ignoring case.
     constexpr std::wstring_view visualBidiApps[] = { L"claude.exe" };
 
+    // Coding agents that write the text the way it was typed (in its logical order) into a screen that they redraw
+    // all the time: A text box that is reordered as a whole moves with every letter that is typed into it, and the
+    // lines of a long text that wrap look scattered (see BidiMode::Words). Compared like visualBidiApps.
+    constexpr std::wstring_view wordsBidiApps[] = { L"opencode.exe" };
+
+    // pi (https://github.com/earendil-works/pi) is a Node.js program, so its process is just "node.exe". It is told
+    // by what its command line mentions: "node.exe C:\Users\...\.pi\agent\bin\pi-launcher.js", or the package itself.
+    constexpr std::wstring_view wordsBidiInterpreter = L"node.exe";
+    constexpr std::wstring_view wordsBidiCommandLines[] = { L"pi-launcher.js", L"pi-coding-agent" };
+
+    bool equalsIgnoringCase(const std::wstring_view a, const std::wstring_view b) noexcept
+    {
+        return CompareStringOrdinal(a.data(), gsl::narrow_cast<int>(a.size()), b.data(), gsl::narrow_cast<int>(b.size()), TRUE) == CSTR_EQUAL;
+    }
+
+    bool containsIgnoringCase(std::wstring haystack, std::wstring needle)
+    {
+        CharLowerBuffW(haystack.data(), gsl::narrow_cast<DWORD>(haystack.size()));
+        CharLowerBuffW(needle.data(), gsl::narrow_cast<DWORD>(needle.size()));
+        return haystack.find(needle) != std::wstring::npos;
+    }
+
+    // The command line of a process, or an empty string. NtQueryInformationProcess(ProcessCommandLineInformation) only needs
+    // the right to query limited information, which is what we have, and it's the way to read it from another process.
+    std::wstring queryCommandLine(const HANDLE process)
+    {
+        struct CommandLineString
+        {
+            USHORT length;
+            USHORT maximumLength;
+            PWSTR buffer;
+        };
+        using NtQueryInformationProcessFn = LONG(NTAPI*)(HANDLE, ULONG, PVOID, ULONG, PULONG);
+        constexpr ULONG processCommandLineInformation = 60;
+
+        static const auto query = reinterpret_cast<NtQueryInformationProcessFn>(GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtQueryInformationProcess"));
+        if (!query)
+        {
+            return {};
+        }
+
+        ULONG needed = 0;
+        query(process, processCommandLineInformation, nullptr, 0, &needed);
+        if (needed < sizeof(CommandLineString) || needed > 64 * 1024)
+        {
+            return {};
+        }
+
+        std::vector<std::byte> buffer(needed);
+        if (query(process, processCommandLineInformation, buffer.data(), needed, &needed) < 0)
+        {
+            return {};
+        }
+
+        const auto string = reinterpret_cast<const CommandLineString*>(buffer.data());
+        if (!string->buffer || string->length == 0)
+        {
+            return {};
+        }
+        return { string->buffer, string->length / sizeof(wchar_t) };
+    }
+
     // Picks the BidiMode of a window by the processes attached to its console: While any of the applications above
-    // is running in it, its text is already in visual order. Only the default mode is overridden. If somebody set
-    // the mode of a window to something else, then that's what they want.
+    // is running in it, its text is already in visual order (visualBidiApps), or it is typed into a screen that must
+    // not move (wordsBidiApps). Only the default mode is overridden. If somebody set the mode of a window to
+    // something else, then that's what they want.
     class BidiModeProvider
     {
     public:
@@ -88,6 +151,8 @@ namespace
 
             _pids.assign(list.begin(), list.end());
             _current = _configured;
+            auto visual = false;
+            auto words = false;
 
             for (const auto pid : list)
             {
@@ -101,13 +166,34 @@ namespace
                         const auto name = full.substr(full.find_last_of(L'\\') + 1);
                         for (const auto app : visualBidiApps)
                         {
-                            if (CompareStringOrdinal(name.data(), gsl::narrow_cast<int>(name.size()), app.data(), gsl::narrow_cast<int>(app.size()), TRUE) == CSTR_EQUAL)
+                            visual |= equalsIgnoringCase(name, app);
+                        }
+                        for (const auto app : wordsBidiApps)
+                        {
+                            words |= equalsIgnoringCase(name, app);
+                        }
+                        if (!words && equalsIgnoringCase(name, wordsBidiInterpreter))
+                        {
+                            if (const auto commandLine = queryCommandLine(process->GetRawHandle()); !commandLine.empty())
                             {
-                                _current = Atlas::BidiMode::Visual;
+                                for (const auto marker : wordsBidiCommandLines)
+                                {
+                                    words |= containsIgnoringCase(commandLine, std::wstring{ marker });
+                                }
                             }
                         }
                     }
                 }
+            }
+
+            // An application that reorders the text itself wins: Its rows are in visual order.
+            if (visual)
+            {
+                _current = Atlas::BidiMode::Visual;
+            }
+            else if (words)
+            {
+                _current = Atlas::BidiMode::Words;
             }
 
             return _current;
@@ -277,7 +363,7 @@ void Window::_UpdateSystemMetrics() const
             pAtlasEngine = new AtlasEngine();
             {
                 const auto bidiMode = pSettings->GetBidiMode();
-                const auto configured = bidiMode <= 2 ? static_cast<Atlas::BidiMode>(bidiMode) : Atlas::BidiMode::Implicit;
+                const auto configured = bidiMode <= 3 ? static_cast<Atlas::BidiMode>(bidiMode) : Atlas::BidiMode::Implicit;
                 pAtlasEngine->SetBidiMode(configured);
                 pAtlasEngine->SetBidiModeProvider(BidiModeProvider{ configured });
                 pAtlasEngine->SetIconFont(pSettings->GetIconFont());

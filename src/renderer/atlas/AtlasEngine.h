@@ -96,6 +96,7 @@ namespace Microsoft::Console::Render::Atlas
         void _flushBufferLine();
         void _mapBidiBufferLine();
         void _mapVisualBufferLine();
+        void _mapWordsBufferLine();
         void _mapBufferLineRange(size_t offBeg, size_t offEnd, bool rtl);
         void _mapRegularText(size_t offBeg, size_t offEnd, bool rtl);
         void _mapBuiltinGlyphs(size_t offBeg, size_t offEnd);
