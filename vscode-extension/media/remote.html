@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>OpenConsole</title>
+<link rel="stylesheet" href="/vendor/xterm.css">
+<link rel="stylesheet" href="/app/remote.css">
+</head>
+<body>
+<!--
+  The page that opens the terminals of VS Code in a browser. Served by src/web/server.js: no inline script, no inline style, no
+  inline handler (the Content-Security-Policy of the server forbids them). Everything that is shown is filled in by /app/remote.js
+  with textContent, never with innerHTML. The texts below are the English ones; remote.js swaps them for Arabic when the browser
+  language is Arabic.
+-->
+<div id="app">
+
+  <section id="pair" hidden>
+    <div class="card">
+      <div class="logo" aria-hidden="true">&gt;_</div>
+      <h1>OpenConsole</h1>
+      <p id="pair-text" class="lead" role="status" aria-live="polite"></p>
+      <div id="pair-spinner" class="spinner" hidden></div>
+      <p id="pair-hint" class="hint"></p>
+      <button id="pair-continue" type="button" hidden data-i18n="useSaved">Use the saved session</button>
+    </div>
+  </section>
+
+  <section id="main" hidden>
+    <header id="bar">
+      <div id="tabs" role="tablist" aria-label="Terminals" data-i18n-label="terminals"></div>
+      <div id="tools">
+        <span id="conn" class="conn" role="img" aria-label="Connecting"></span>
+        <span id="badge" class="badge"></span>
+        <button id="font-down" type="button" class="tool" aria-label="Smaller text" title="Smaller text" data-i18n-label="fontSmaller">A&minus;</button>
+        <button id="font-up" type="button" class="tool" aria-label="Larger text" title="Larger text" data-i18n-label="fontLarger">A+</button>
+        <button id="font-fit" type="button" class="tool" aria-label="Fit to width" title="Fit to width" data-i18n-label="fontFit">&#x2922;</button>
+      </div>
+    </header>
+
+    <div id="banner" role="status" aria-live="polite" hidden>
+      <span id="banner-text"></span>
+      <button id="banner-retry" type="button" hidden data-i18n="retry">Retry now</button>
+    </div>
+
+    <div id="stage" dir="ltr">
+      <div id="term-host" dir="ltr"></div>
+      <div id="empty" hidden></div>
+    </div>
+
+    <div id="keys" dir="ltr" role="toolbar" aria-label="Extra keys" data-i18n-label="keysLabel" hidden>
+      <div class="row">
+        <button type="button" data-k="esc">Esc</button>
+        <button type="button" data-k="tab">Tab</button>
+        <button type="button" data-k="ctrl" class="mod" aria-pressed="false">Ctrl</button>
+        <button type="button" data-k="alt" class="mod" aria-pressed="false">Alt</button>
+        <button type="button" data-k="left" aria-label="Left">&larr;</button>
+        <button type="button" data-k="down" aria-label="Down">&darr;</button>
+        <button type="button" data-k="up" aria-label="Up">&uarr;</button>
+        <button type="button" data-k="right" aria-label="Right">&rarr;</button>
+        <button type="button" data-k="kbd" aria-label="Keyboard" data-i18n-label="keyboard">&#x2328;</button>
+      </div>
+      <div class="row">
+        <button type="button" data-k="home">Home</button>
+        <button type="button" data-k="end">End</button>
+        <button type="button" data-k="pgup">PgUp</button>
+        <button type="button" data-k="pgdn">PgDn</button>
+        <button type="button" data-ch="|">|</button>
+        <button type="button" data-ch="/">/</button>
+        <button type="button" data-ch="-">-</button>
+        <button type="button" data-ch="~">~</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+<script src="/vendor/xterm.js"></script>
+<script src="/vendor/addon-unicode11.js"></script>
+<script src="/vendor/bidi.js"></script>
+<script src="/app/arabic-layout.js"></script>
+<script src="/app/row-patcher.js"></script>
+<script src="/app/remote.js"></script>
+</body>
+</html>

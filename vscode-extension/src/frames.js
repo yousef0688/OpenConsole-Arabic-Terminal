@@ -1,7 +1,7 @@
 'use strict';
 // The frames that the extension and conpty-bridge.exe exchange:  [type: 1 byte][length: 4 bytes, little endian][payload]
 
-const FromParent = { INPUT: 1, RESIZE: 2 };
+const FromParent = { INPUT: 1, RESIZE: 2, CLEAR: 3 };
 const ToParent = { OUTPUT: 1, EXIT: 2, PROCS: 3, READY: 4, ERROR: 5 };
 
 function encode(type, payload) {
@@ -28,6 +28,11 @@ function encodeResize(columns, rows) {
     return encode(FromParent.RESIZE, payload);
 }
 
+/** Asks the pseudo console to forget what is on its screen (keepCursorRow: the row of the cursor stays, as the prompt does). */
+function encodeClear(keepCursorRow) {
+    return encode(FromParent.CLEAR, Buffer.from([keepCursorRow ? 1 : 0]));
+}
+
 /** Cuts a stream of bytes into frames; feed() returns the complete frames received so far. */
 class FrameReader {
     constructor() {
@@ -48,4 +53,4 @@ class FrameReader {
     }
 }
 
-module.exports = { FromParent, ToParent, encode, encodeInput, encodeInputBytes, encodeResize, FrameReader };
+module.exports = { FromParent, ToParent, encode, encodeInput, encodeInputBytes, encodeResize, encodeClear, FrameReader };

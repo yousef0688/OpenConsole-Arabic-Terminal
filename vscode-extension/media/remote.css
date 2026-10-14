@@ -1,0 +1,472 @@
+/* The page that opens the terminals of VS Code in a browser (media/remote.html + remote.js). The terminal itself is drawn by xterm.js
+   (xterm.css) and the right-to-left layer; this file is the frame around it: pairing screen, tabs, banner, extra keys. */
+
+:root {
+    color-scheme: dark;
+    --bg: #1e1e1e;
+    --panel: #252526;
+    --panel-2: #2d2d30;
+    --border: #3c3c3c;
+    --fg: #cccccc;
+    --fg-strong: #ffffff;
+    --muted: #9d9d9d;
+    --accent: #3794ff;
+    --ok: #23d18b;
+    --warn: #cca700;
+    --bad: #f48771;
+    --bar-h: 40px;
+    --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Arabic", "Noto Naskh Arabic", Tahoma, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: var(--bg);
+    color: var(--fg);
+    font: 14px/1.4 var(--font-ui);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+/* the page fills the visual viewport (remote.js sets left/top/width/height from window.visualViewport, so the extra keys stay above the
+   soft keyboard); this is the fallback */
+#app {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+}
+
+#main {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+button {
+    font: inherit;
+    color: inherit;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
+/* ---- the pairing screen ---------------------------------------------------------------------------------------------------- */
+
+#pair {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    overflow: auto;
+}
+
+#pair .card {
+    width: 100%;
+    max-width: 420px;
+    padding: 28px 24px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel);
+    text-align: center;
+}
+
+#pair .logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    font: 700 20px/1 Consolas, Menlo, monospace;
+    direction: ltr;
+}
+
+#pair h1 {
+    margin: 14px 0 6px;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--fg-strong);
+}
+
+#pair .lead {
+    margin: 8px 0;
+    font-size: 16px;
+    color: var(--fg-strong);
+}
+
+#pair .hint {
+    margin: 8px 0 0;
+    color: var(--muted);
+}
+
+#pair .hint:empty {
+    display: none;
+}
+
+#pair.error .lead {
+    color: var(--bad);
+}
+
+#pair-continue {
+    margin-top: 16px;
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel-2);
+    cursor: pointer;
+}
+
+.spinner {
+    width: 26px;
+    height: 26px;
+    margin: 14px auto 4px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: oc-spin 0.9s linear infinite;
+}
+
+@keyframes oc-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ---- the bar: terminals (tabs), connection, role, text size ----------------------------------------------------------------- */
+
+#bar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: stretch;
+    height: var(--bar-h);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#tabs {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+}
+
+#tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.tab {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 150px;
+    padding: 0 12px;
+    border: 0;
+    border-top: 2px solid transparent;
+    border-right: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.tab[aria-selected="true"] {
+    background: var(--bg);
+    color: var(--fg-strong);
+    border-top-color: var(--accent);
+}
+
+.tab .name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tab.exited .name {
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+.tab .dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: transparent;
+}
+
+.tab .dot[data-state="running"] {
+    background: var(--ok);
+}
+
+.tab .dot[data-state="working"] {
+    background: transparent;
+    border: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    border-top-color: var(--accent);
+    animation: oc-spin 0.8s linear infinite;
+}
+
+.tab .dot[data-state="waiting"] {
+    border: 1.5px solid var(--muted);
+}
+
+.tab .dot[data-state="blocked"],
+.tab.attention .dot {
+    background: var(--warn);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--warn) 60%, transparent);
+    animation: oc-pulse 1.4s ease-out infinite;
+}
+
+.tab .dot[data-state="done"] {
+    background: var(--ok);
+}
+
+.tab .dot[data-state="error"] {
+    background: var(--bad);
+}
+
+.tab .dot[data-state="exited"] {
+    border-radius: 2px;
+    background: var(--muted);
+}
+
+@keyframes oc-pulse {
+    to {
+        box-shadow: 0 0 0 7px transparent;
+    }
+}
+
+#tools {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 4px;
+}
+
+.conn {
+    width: 9px;
+    height: 9px;
+    margin: 0 6px;
+    border-radius: 50%;
+    background: var(--warn);
+}
+
+.conn.ok {
+    background: var(--ok);
+}
+
+.conn.bad {
+    background: var(--bad);
+}
+
+.badge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.badge.write {
+    color: var(--ok);
+    border-color: color-mix(in srgb, var(--ok) 45%, var(--border));
+}
+
+.badge:empty {
+    display: none;
+}
+
+.tool {
+    direction: ltr;
+    unicode-bidi: isolate;
+    min-width: 34px;
+    height: 32px;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--fg);
+    cursor: pointer;
+}
+
+.tool:hover {
+    background: var(--panel-2);
+}
+
+.tool:active {
+    background: var(--border);
+}
+
+/* ---- the banner: connecting, disconnected --------------------------------------------------------------------------------- */
+
+#banner {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 6px 12px;
+    background: color-mix(in srgb, var(--warn) 22%, var(--panel));
+    border-bottom: 1px solid color-mix(in srgb, var(--warn) 55%, var(--border));
+    color: var(--fg-strong);
+    font-size: 13px;
+}
+
+#banner.info {
+    background: var(--panel-2);
+    border-bottom-color: var(--border);
+}
+
+#banner button {
+    padding: 3px 10px;
+    border: 1px solid color-mix(in srgb, var(--warn) 60%, var(--border));
+    border-radius: 5px;
+    background: transparent;
+    cursor: pointer;
+}
+
+/* ---- the terminal ----------------------------------------------------------------------------------------------------------- */
+
+/* The owner of the terminals decides how many columns and rows there are; the stage shows them at the size of the font and is
+   panned (scrolled) when they do not fit. Touch gestures are handled by remote.js (touch-action: none). */
+#stage {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--bg);
+    touch-action: none;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+    direction: ltr;
+}
+
+#stage.pan {
+    overflow: auto;
+}
+
+#term-host {
+    position: relative;
+    margin: 4px 0 0 6px;
+    direction: ltr;
+    text-align: left;
+}
+
+#term-host .xterm {
+    width: 100%;
+    height: 100%;
+}
+
+#term-host .xterm-viewport {
+    background-color: transparent !important;
+}
+
+#stage.stale #term-host {
+    opacity: 0.55;
+    transition: opacity 0.2s;
+}
+
+#empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 15px;
+}
+
+/* ---- the extra keys: above the soft keyboard (the page is as high as the visual viewport) ---------------------------------- */
+
+#keys {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 5px 4px calc(5px + env(safe-area-inset-bottom));
+    padding-left: calc(4px + env(safe-area-inset-left));
+    padding-right: calc(4px + env(safe-area-inset-right));
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#keys .row {
+    display: flex;
+    gap: 4px;
+}
+
+#keys button {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 38px;
+    padding: 0 2px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel-2);
+    color: var(--fg-strong);
+    font-size: 14px;
+    cursor: pointer;
+}
+
+#keys button:active,
+#keys button.held {
+    background: var(--border);
+}
+
+#keys button.mod[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+#keys button.mod.locked {
+    box-shadow: inset 0 -3px 0 #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .spinner,
+    .tab .dot {
+        animation: none !important;
+    }
+
+    #stage.stale #term-host {
+        transition: none;
+    }
+}

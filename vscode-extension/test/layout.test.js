@@ -120,3 +120,86 @@ test('cursor: on a letter inside an Arabic word, and in plain text', () => {
     const plain = unitsOf('PS> dir');
     assert.equal(L.cursorColumn(L.analyzeImplicit(plain), plain, 7, 'bar', 7), 7);
 });
+
+test('words mode: every word is mirrored in its own columns and the words stay in the order they were typed', () => {
+    const u = unitsOf('> ' + marhaba + ' with ' + salam + ' ' + alam);
+    const a = L.analyzeWords(u);
+    assert.equal(a.hasRtl, true);
+    const rtl = a.boxes.filter(b => b.rtl);
+    assert.deepEqual(rtl.map(b => [b.u0, b.u1, b.vcol, b.cells]), [[2, 7, 2, 5], [13, 19, 13, 6], [20, 24, 20, 4]]);
+    assert.ok(rtl.every(b => b.reverse === false), 'the browser lays the letters of a word out right to left itself');
+    // the same sentence in implicit mode puts the last word first
+    const implicit = L.analyzeImplicit(unitsOf('> ' + salam + ' ' + alam)).boxes.filter(b => b.rtl);
+    assert.equal(implicit.length, 1, 'implicit mode: one run for the whole stretch');
+    const words = L.analyzeWords(unitsOf('> ' + salam + ' ' + alam)).boxes.filter(b => b.rtl);
+    assert.equal(words.length, 2, 'words mode: one box per word');
+    assert.deepEqual(words.map(b => b.vcol), [2, 9]);
+});
+
+test('words mode: a word that is typed does not move what comes before it', () => {
+    const before = L.analyzeWords(unitsOf('> ' + marhaba + ' ' + salam.slice(0, 3)));
+    const after = L.analyzeWords(unitsOf('> ' + marhaba + ' ' + salam));
+    const first = (a) => a.boxes.filter(b => b.rtl)[0];
+    assert.deepEqual([first(before).vcol, first(before).cells], [first(after).vcol, first(after).cells]);
+    // in implicit mode the first word is pushed to the right by every letter that is typed
+    const impl = (s) => L.analyzeImplicit(unitsOf('> ' + marhaba + ' ' + s)).boxes.filter(b => b.rtl)[0];
+    assert.notEqual(impl(salam.slice(0, 3)).cells, impl(salam).cells);
+});
+
+test('words mode: numbers, Latin text and the digits of Arabic stay left to right', () => {
+    const digits = A(0x662, 0x660, 0x662, 0x666);      // ٢٠٢٦
+    const u = unitsOf(marhaba + ' ' + digits + ' 2026 abc');
+    const a = L.analyzeWords(u);
+    const rtl = a.boxes.filter(b => b.rtl);
+    assert.equal(rtl.length, 1, 'only the word is mirrored');
+    assert.deepEqual([rtl[0].u0, rtl[0].u1], [0, 5]);
+    for (let i = 5; i < u.length; i++) assert.equal(a.vcol[i], i, 'unit ' + i + ' stays in its column');
+});
+
+test('words mode: a row without right-to-left letters has nothing to do', () => {
+    assert.equal(L.analyzeWords(unitsOf('PS C:\> dir /b')).hasRtl, false);
+});
+
+test('words mode: the unit under the cursor is drawn on its own but keeps its place inside the word', () => {
+    const u = unitsOf('> ' + salam);                    // السلام in columns 2..7
+    const whole = L.analyzeWords(u);
+    const split = L.analyzeWords(u, { before: 4, after: 5 });
+    for (let i = 0; i < u.length; i++) assert.equal(split.vcol[i], whole.vcol[i]);
+    assert.equal(whole.vcol[2], 7, 'the first letter is at the right end of the word');
+    assert.equal(whole.vcol[7], 2, 'the last letter is at the left end');
+    assert.ok(split.boxes.some(b => b.u0 === 4 && b.u1 === 5));
+});
+
+test('words mode: cursor at the end of a word being typed is at its left edge', () => {
+    const u = unitsOf('> ' + marhaba + ' ' + salam);
+    const a = L.analyzeWords(u);
+    assert.equal(L.cursorColumn(a, u, u.length, 'bar', 14), 8, 'the bar is at the left edge of the word: where the next letter appears');
+    assert.equal(L.cursorColumn(a, u, u.length, 'block', 14), 7, 'a block sits just left of the word');
+    // after the space the cursor is where the cursor is
+    const spaced = unitsOf('> ' + marhaba + ' ');
+    assert.equal(L.cursorColumn(L.analyzeWords(spaced), spaced, spaced.length, 'bar', 8), 8);
+});
+
+test('visual mode, typing at the end in Claude Code: the cursor goes to the free cell at the left end of the text, and only then', () => {
+    const word = A(0x643, 0x641, 0x64A, 0x643);               // the word as Claude Code writes it: visual order of "كيفك"
+    const row = (text) => unitsOf(text).map((u, i) => Object.assign(u, { col: i }));
+    const prompt = String.fromCharCode(0x276F);
+    const typing = row(prompt + '  ' + word);                  // the prompt, a gap, the free cell, the word: the cursor of the terminal is on its last cell
+    assert.deepEqual(L.visualEndCaret(typing, 6), { col: 3 });
+    assert.equal(L.visualEndCaret(typing, 5), null, 'only when the cursor is on the last cell');
+    assert.equal(L.visualEndCaret(typing, 2), null);
+    assert.equal(L.visualEndCaret(typing, 99), null);
+    assert.deepEqual(L.visualEndCaret(row(prompt + '  ' + A(0x643)), 3), { col: 3 }, 'the first letter typed');
+
+    // after the Left arrow the text starts right after the gap: the cursor is inside the text, not at its end
+    assert.equal(L.visualEndCaret(row(prompt + ' ' + word), 5), null);
+    // not a prompt row, no Arabic, or Latin text first
+    assert.equal(L.visualEndCaret(row(word + ' ' + word), 8), null);
+    assert.equal(L.visualEndCaret(row(prompt + '  hello'), 7), null);
+    assert.equal(L.visualEndCaret(row(prompt + '  abc ' + word), 10), null, 'the next letter of Latin text comes at the right of it');
+    assert.equal(L.visualEndCaret(row('  ' + word), 5), null, 'a space is not a prompt symbol');
+    assert.equal(L.visualEndCaret(row(A(0x645) + '  ' + word), 6), null, 'an Arabic letter is not a prompt symbol');
+    assert.equal(L.visualEndCaret([], 0), null);
+    // Claude Code writes a no-break space after its prompt symbol, and the real row looks like this
+    assert.deepEqual(L.visualEndCaret(row(prompt + String.fromCharCode(0xA0) + ' ' + word), 6), { col: 3 });
+});

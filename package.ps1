@@ -3,7 +3,7 @@
     Builds OpenConsole and its VS Code extension and packs the ready-to-install download: dist\OpenConsole-x64.zip.
 
 .DESCRIPTION
-    The zip holds OpenConsole.exe, Install.cmd / Uninstall.cmd, install.ps1, the VS Code extension (openconsole-terminal-*.vsix)
+    The zip holds OpenConsole.exe, Install.cmd / Uninstall.cmd, install.ps1, the VS Code extension (openconsole-*.vsix)
     with Install-VSCode.cmd / install-vscode.ps1, a short README.txt and the license files.
     Users need nothing else: no Visual Studio, no Git, no Node.js. Attach the zip to a GitHub release. Keep its file name,
     because the Download button of the README points to .../releases/latest/download/OpenConsole-x64.zip.
@@ -36,8 +36,8 @@ if (-not (Test-Path -LiteralPath $exe)) { throw "$exe does not exist. Run the sc
 $extensionDir = Join-Path $root 'vscode-extension'
 $extension = $null
 if (-not $SkipExtension) {
-    $existing = Get-ChildItem -LiteralPath $extensionDir -Filter 'openconsole-terminal-*.vsix' -File -ErrorAction SilentlyContinue |
-        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $existing = Get-ChildItem -LiteralPath $extensionDir -Filter 'openconsole-*.vsix' -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notlike 'openconsole-terminal-*' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if ($SkipBuild -and $existing) {
         $extension = $existing
     }
@@ -54,8 +54,8 @@ if (-not $SkipExtension) {
             }
         }
         finally { Pop-Location }
-        $extension = Get-ChildItem -LiteralPath $extensionDir -Filter 'openconsole-terminal-*.vsix' -File |
-            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        $extension = Get-ChildItem -LiteralPath $extensionDir -Filter 'openconsole-*.vsix' -File |
+            Where-Object { $_.Name -notlike 'openconsole-terminal-*' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
         if (-not $extension) { throw 'The extension build did not produce a .vsix file.' }
     }
 }

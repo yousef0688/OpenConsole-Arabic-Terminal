@@ -146,6 +146,58 @@
         return { hasRtl, levels: null, vcol, boxes };
     }
 
+    /** Letters, marks and punctuation of the right-to-left scripts that make up a word. The digits are written left to right. */
+    function isRtlWordCodePoint(cp) {
+        if ((cp >= 0x0660 && cp <= 0x0669) || (cp >= 0x06F0 && cp <= 0x06F9)) return false;   // Arabic-Indic digits
+        if (cp === 0x200F || (cp >= 0x202A && cp <= 0x202E)) return false;                     // direction marks are not part of a word
+        return isRtlCodePoint(cp);
+    }
+
+    /**
+     * Words mode: every word of right-to-left letters is mirrored on its own, inside the columns it occupies. The words,
+     * the spaces, the numbers and the Latin text stay in the order they are in on the screen. Text that is being typed does
+     * not move (a run reordered as a whole grows at its right end and moves with every letter), and a text that wraps onto
+     * the next row reads from top to bottom. Same as BidiMode::Words of OpenConsole (src/renderer/atlas).
+     */
+    function analyzeWords(units, breakBefore) {
+        const n = units.length;
+        const word = new Array(n);
+        let hasRtl = false;
+        for (let i = 0; i < n; i++) {
+            word[i] = isRtlWordCodePoint(units[i].text.codePointAt(0));
+            if (word[i]) hasRtl = true;
+        }
+        // the first column of every unit: a word is mirrored inside its columns, anything else is where it is
+        const levels = new Uint8Array(n);
+        const vcol = new Int32Array(n);
+        let col = 0;
+        let start = 0;
+        for (let i = 1; i <= n; i++) {
+            if (i < n && word[i] === word[start]) continue;
+            if (word[start]) {
+                let right = col;
+                for (let u = start; u < i; u++) right += units[u].width;
+                let at = col;
+                for (let u = i - 1; u >= start; u--) { vcol[u] = at; at += units[u].width; levels[u] = 1; }
+                col = right;
+            } else {
+                for (let u = start; u < i; u++) { vcol[u] = col; col += units[u].width; }
+            }
+            start = i;
+        }
+
+        // the pieces that are drawn as one (the unit under the cursor is drawn on its own, whatever word it is in)
+        const boxes = [];
+        start = 0;
+        for (let i = 1; i <= n; i++) {
+            const boundary = i === n || word[i] !== word[start] || (breakBefore && (i === breakBefore.before || i === breakBefore.after));
+            if (!boundary) continue;
+            pushBox(boxes, units, vcol, start, i, word[start], false);
+            start = i;
+        }
+        return { hasRtl, levels, vcol, boxes };
+    }
+
     function pushBox(boxes, units, vcol, u0, u1, rtl, reverse) {
         let lo = Infinity, hi = -Infinity, cells = 0;
         for (let i = u0; i < u1; i++) {
@@ -198,9 +250,33 @@
         return cursorUnit < n ? analysis.vcol[cursorUnit] : cursorColFallback;
     }
 
+    /**
+     * Visual mode, typing at the end of the text of Claude Code. Claude Code keeps the cursor of the terminal on the LAST cell of the text
+     * that it wrote in visual order, which is the first letter of the last word: the cursor block sat on a letter and cut it off from its word
+     * (and a bar stood in the middle of the word). The next letter appears at the LEFT end of the text, in the free cell in front of it.
+     * Returns { col: the column where the text starts } when the cursor is in that position, else null.
+     * units: the cells of the row; a row is "a prompt symbol, a space, then the text" ("❯  text": one more free cell while typing at the end).
+     */
+    function visualEndCaret(units, cursorUnit) {
+        const n = units.length;
+        if (cursorUnit < 0 || cursorUnit >= n || n < 4) return null;
+        const blank = (text) => text === ' ' || text === ' ';              // Claude Code writes a no-break space after its prompt symbol
+        const mark = units[0].text.codePointAt(0);
+        if (blank(units[0].text) || isRtlCodePoint(mark) || !blank(units[1].text)) return null;
+        let first = -1, last = -1;
+        for (let i = 2; i < n; i++) {
+            if (blank(units[i].text)) continue;
+            if (first < 0) first = i;
+            last = i;
+        }
+        if (first <= 2 || cursorUnit !== last) return null;                                  // no free cell in front: the cursor is not at the end
+        if (!isArabicLetter(units[first].text.codePointAt(0))) return null;                  // the text starts with Arabic letters: the next one comes at its left
+        return { col: units[first].col };
+    }
+
     return {
-        isRtlCodePoint, isArabicLetter, isLayoutSymbol,
+        isRtlCodePoint, isArabicLetter, isLayoutSymbol, visualEndCaret,
         rowHasRtl, rowHasArabicLetter,
-        analyzeImplicit, analyzeVisual, cursorColumn,
+        analyzeImplicit, analyzeVisual, analyzeWords, cursorColumn,
     };
 });

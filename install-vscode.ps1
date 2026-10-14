@@ -3,7 +3,7 @@
     Adds the OpenConsole terminal to Visual Studio Code: a tab "OpenConsole" in the panel that shows Arabic and Hebrew correctly.
 
 .DESCRIPTION
-    Installs the extension file (openconsole-terminal-*.vsix) that is next to this script into every Visual Studio Code that it
+    Installs the extension file (openconsole-*.vsix) that is next to this script into every Visual Studio Code that it
     finds (the normal one and Insiders). Nothing else is changed. In the source repository, when there is no .vsix yet, it builds one
     first (that needs Node.js and the Visual Studio C++ build tools). No administrator rights are needed.
 
@@ -46,7 +46,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
-$extensionId = 'openconsole.openconsole-terminal'
+$extensionId = 'openconsole.openconsole'
+# Version 0.1.0 was published as openconsole-terminal; it is removed when the renamed extension is installed.
+$legacyExtensionId = 'openconsole.openconsole-terminal'
 
 # Errors the user can act on are shown as a plain message, without PowerShell's technical error record.
 function Stop-Install([string]$Message) {
@@ -105,16 +107,16 @@ function Invoke-VSCode([string]$Tool, [string[]]$Arguments) {
     return [pscustomobject]@{ Lines = $lines; ExitCode = $code }
 }
 
-function Get-InstalledVersion([string]$Tool) {
+function Get-InstalledVersion([string]$Tool, [string]$Id = $extensionId) {
     $result = Invoke-VSCode $Tool @('--list-extensions', '--show-versions')
     foreach ($l in $result.Lines) {
-        if ($l -match ('^' + [regex]::Escape($extensionId) + '@(.+)$')) { return $Matches[1].Trim() }
+        if ($l -match ('^' + [regex]::Escape($Id) + '@(.+)$')) { return $Matches[1].Trim() }
     }
     return $null
 }
 
 function Find-Package {
-    $found = Get-ChildItem -LiteralPath $root -Filter 'openconsole-terminal*.vsix' -File -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+    $found = Get-ChildItem -LiteralPath $root -Filter 'openconsole-*.vsix' -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -notlike 'openconsole-terminal-*' } | Sort-Object Name -Descending | Select-Object -First 1
     if ($found) { return $found.FullName }
 
     $source = Join-Path $root 'vscode-extension'
@@ -125,7 +127,7 @@ function Find-Package {
     }
     if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
         Write-Host 'Building the extension needs Node.js. Install it with: winget install --id OpenJS.NodeJS.LTS --exact' -ForegroundColor Yellow
-        Stop-Install 'Missing prerequisite: Node.js (or put a openconsole-terminal-*.vsix next to this script).'
+        Stop-Install 'Missing prerequisite: Node.js (or put an openconsole-*.vsix next to this script).'
     }
     Write-Host 'Building the extension (the first time this downloads a few packages)...'
     Push-Location $source
@@ -158,11 +160,15 @@ if ($Uninstall) {
     $removed = 0
     foreach ($tool in $tools) {
         Write-Host "VS Code: $tool"
-        if (-not (Get-InstalledVersion $tool)) { Write-Host '  the OpenConsole extension is not installed'; continue }
-        $result = Invoke-VSCode $tool @('--uninstall-extension', $extensionId)
-        $result.Lines | ForEach-Object { Write-Host "  $_" }
-        if ($result.ExitCode -ne 0) { Stop-Install 'Removing the extension failed. Close VS Code and try again.' }
-        $removed++
+        $any = $false
+        foreach ($id in @($extensionId, $legacyExtensionId)) {
+            if (-not (Get-InstalledVersion $tool $id)) { continue }
+            $any = $true
+            $result = Invoke-VSCode $tool @('--uninstall-extension', $id)
+            $result.Lines | ForEach-Object { Write-Host "  $_" }
+            if ($result.ExitCode -ne 0) { Stop-Install 'Removing the extension failed. Close VS Code and try again.' }
+        }
+        if ($any) { $removed++ } else { Write-Host '  the OpenConsole extension is not installed' }
     }
     if ($removed) { Write-Host 'The OpenConsole extension was removed. Reload the open VS Code windows.' -ForegroundColor Green }
     else { Write-Host 'The OpenConsole extension was not installed in VS Code.' }
@@ -171,7 +177,7 @@ if ($Uninstall) {
 
 $package = Find-Package
 if (-not $package) {
-    Stop-Install 'The extension file (openconsole-terminal-*.vsix) was not found next to this script. Extract the whole zip file first, or download the file again.'
+    Stop-Install 'The extension file (openconsole-*.vsix) was not found next to this script. Extract the whole zip file first, or download the file again.'
 }
 $packageVersion = if ((Split-Path $package -Leaf) -match '(\d+\.\d+\.\d+[^\\]*)\.vsix$') { $Matches[1] } else { $null }
 Write-Host "Extension: $package"
@@ -179,6 +185,12 @@ Write-Host "Extension: $package"
 $failed = $false
 foreach ($tool in $tools) {
     Write-Host "VS Code: $tool"
+    if (Get-InstalledVersion $tool $legacyExtensionId) {
+        Write-Host "  removing the old extension $legacyExtensionId (it is now called $extensionId)"
+        $old = Invoke-VSCode $tool @('--uninstall-extension', $legacyExtensionId)
+        $old.Lines | ForEach-Object { Write-Host "    $_" }
+        if ($old.ExitCode -ne 0) { Write-Host '  the old extension could not be removed; remove it by hand, or two OpenConsole tabs will clash' -ForegroundColor Yellow }
+    }
     $installed = Get-InstalledVersion $tool
     if ($installed -and $packageVersion -and $installed -eq $packageVersion -and -not $Force) {
         Write-Host "  version $installed is already installed (use -Force to install it again)"

@@ -1,3 +1,8 @@
+/* how long the motion takes: 1 is the normal, 2 twice as long, 0 none at all (the setting openconsole.motionSpeed, see media/main.js) */
+:root {
+    --oc-speed: 1;
+}
+
 html, body {
     height: 100%;
     margin: 0;
@@ -6,20 +11,435 @@ html, body {
     background: var(--oc-background, var(--vscode-terminal-background, var(--vscode-panel-background, #1e1e1e)));
 }
 
-#terminal {
+/* the terminals on the left, the list of terminals on the right (only when there is more than one, as in VS Code) */
+#app {
+    position: absolute;
+    inset: 0;
+    display: flex;
+}
+
+#terminals {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* Every terminal fills the same area. The ones that are not shown keep their size (they are only invisible), so that xterm.js
+   can measure them. */
+.pane {
     position: absolute;
     inset: 0;
     padding: 2px 0 0 8px;
     box-sizing: border-box;
+    visibility: hidden;
 }
 
-#terminal .xterm {
+.pane.active {
+    visibility: visible;
+}
+
+/* a terminal that is shown at the right side of another one (a split): a line between them, which does not take room */
+.pane.divided {
+    box-shadow: inset 1px 0 0 var(--vscode-terminal-border, var(--vscode-panel-border, rgba(128, 128, 128, 0.35)));
+}
+
+.pane .xterm {
     height: 100%;
 }
 
 /* the scroll bar of xterm.js takes the colours of VS Code */
-#terminal .xterm-viewport {
+.pane .xterm-viewport {
     background-color: transparent !important;
+}
+
+#list {
+    flex: 0 0 auto;
+    width: 184px;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-left: 1px solid var(--vscode-terminal-border, var(--vscode-panel-border, rgba(128, 128, 128, 0.35)));
+    font: 13px/26px var(--vscode-font-family, sans-serif);
+    color: var(--vscode-foreground, #ccc);
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#list[hidden] {
+    display: none;
+}
+
+/* the line between the terminals and the list: 5px to grab, the line of the list is in the middle of it, and it lights up as the sash of VS Code */
+#sash {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 20;
+    width: 5px;
+    margin: 0 -3px 0 -2px;
+    cursor: col-resize;
+    touch-action: none;
+    outline: none;
+}
+
+#sash[hidden] {
+    display: none;
+}
+
+#sash::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 2px;
+    width: 1px;
+    background: transparent;
+    transition: background-color 0.1s ease-out 0.1s;
+}
+
+#sash:hover::after,
+#sash:focus-visible::after,
+#sash.dragging::after {
+    background: var(--vscode-sash-hoverBorder, #007fd4);
+}
+
+/* while the line is held, the whole view keeps the cursor of the line and does not select text */
+body.oc-resizing,
+body.oc-resizing * {
+    cursor: col-resize !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
+
+#list .item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 26px;
+    padding: 0 4px 0 8px;
+    cursor: pointer;
+}
+
+#list .item:hover {
+    background: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.15));
+}
+
+#list .item.active {
+    background: var(--vscode-list-inactiveSelectionBackground, rgba(128, 128, 128, 0.25));
+    color: var(--vscode-list-inactiveSelectionForeground, var(--vscode-foreground, #ccc));
+}
+
+#list .item .icon {
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+}
+
+#list .item .label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* the terminals of a group (split next to each other) hang together under one another, with a line at their side */
+#list .item.grouped {
+    position: relative;
+    padding-left: 18px;
+}
+
+#list .item.grouped::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 0;
+    bottom: 0;
+    border-left: 1px solid var(--vscode-tree-indentGuidesStroke, rgba(128, 128, 128, 0.55));
+}
+
+#list .item.grouped.first::before {
+    top: 50%;
+}
+
+#list .item.grouped.last::before {
+    bottom: 50%;
+}
+
+#list .item.grouped::after {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    width: 5px;
+    border-top: 1px solid var(--vscode-tree-indentGuidesStroke, rgba(128, 128, 128, 0.55));
+}
+
+/* the buttons of a row: split and kill, shown on the row that is pointed at and on the one that has the focus */
+#list .item .split,
+#list .item .close {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+/* the buttons take room only on the row that is pointed at or has the focus, so that the names of the others are not cut */
+#list .item:not(:hover):not(.active) .split,
+#list .item:not(:hover):not(.active) .close {
+    display: none;
+}
+
+#list .item .split:hover,
+#list .item .close:hover {
+    background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.3));
+}
+
+#list .item .split svg,
+#list .item .close svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* ---- motion ------------------------------------------------------------------------------------------------------------------ */
+/* The buttons that the page draws move: they spring in when their row is pointed at, grow when they are pointed at, sink when they
+   are pressed, and their icons come alive: the line of Split Terminal divides in two, the lid of the bin lifts. (The buttons of the
+   toolbar of the view belong to VS Code, which draws them; an extension cannot animate those.) */
+
+#list .item {
+    transition: background-color calc(240ms * var(--oc-speed, 1)) ease;
+}
+
+#list .item .split,
+#list .item .close {
+    transition: background-color calc(240ms * var(--oc-speed, 1)) ease, color calc(240ms * var(--oc-speed, 1)) ease, box-shadow calc(240ms * var(--oc-speed, 1)) ease, transform calc(350ms * var(--oc-speed, 1)) cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#list .item:hover .split,
+#list .item.active .split,
+#list .item:hover .close,
+#list .item.active .close {
+    animation: oc-button-in calc(450ms * var(--oc-speed, 1)) cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+#list .item:hover .close,
+#list .item.active .close {
+    animation-delay: calc(90ms * var(--oc-speed, 1));
+}
+
+@keyframes oc-button-in {
+    from { opacity: 0; transform: translateX(10px) scale(0.4); }
+    55% { opacity: 1; transform: translateX(-1px) scale(1.12); }
+    to { opacity: 1; transform: none; }
+}
+
+#list .item .split:hover,
+#list .item .close:hover {
+    transform: scale(1.12);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 24%, transparent);
+}
+
+#list .item .split:active,
+#list .item .close:active {
+    transform: scale(0.84);
+    transition-duration: calc(110ms * var(--oc-speed, 1));
+}
+
+/* the bin turns red when it is pointed at: this button ends a terminal */
+#list .item .close:hover {
+    color: var(--vscode-errorForeground, #f48771);
+    background: color-mix(in srgb, var(--vscode-errorForeground, #f48771) 18%, transparent);
+}
+
+#list .item .split:focus-visible,
+#list .item .close:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder, #007fd4);
+    outline-offset: -1px;
+}
+
+#list .item .split svg path,
+#list .item .close svg path {
+    transition: transform calc(420ms * var(--oc-speed, 1)) cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#list .item .split:hover svg .half-l {
+    transform: translateX(-1.8px);
+}
+
+#list .item .split:hover svg .half-r {
+    transform: translateX(1.8px);
+}
+
+#list .item .close svg .lid {
+    transform-origin: 3px 4px;
+}
+
+#list .item .close:hover svg .lid {
+    transform: rotate(-22deg) translateY(-0.5px);
+}
+
+/* a terminal that was just added slides into the list, and the one that gets the focus fades its highlight in */
+#list .item.entering {
+    animation: oc-row-in calc(480ms * var(--oc-speed, 1)) cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+@keyframes oc-row-in {
+    from { opacity: 0; transform: translateX(18px); }
+    to { opacity: 1; transform: none; }
+}
+
+#list .item.active:not(.entering) {
+    animation: oc-item-select calc(420ms * var(--oc-speed, 1)) ease-out;
+}
+
+#list .item.entering.active {
+    animation: oc-row-in calc(480ms * var(--oc-speed, 1)) cubic-bezier(0.2, 0.8, 0.2, 1) backwards, oc-item-select calc(420ms * var(--oc-speed, 1)) ease-out;
+}
+
+@keyframes oc-item-select {
+    from { background-color: transparent; }
+}
+
+/* the entries of the menu next to "+" come in one after the other, and sink a little when they are pressed */
+#menu .entry {
+    animation: oc-entry-in calc(380ms * var(--oc-speed, 1)) cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    animation-delay: calc((70ms + var(--i, 0) * 22ms) * var(--oc-speed, 1));
+    transition: background-color calc(140ms * var(--oc-speed, 1)) ease-out, transform calc(190ms * var(--oc-speed, 1)) ease-out;
+}
+
+@keyframes oc-entry-in {
+    from { opacity: 0; transform: translateX(8px); }
+    to { opacity: 1; transform: none; }
+}
+
+#menu .entry:active {
+    transform: scale(0.985);
+    background: color-mix(in srgb, currentColor 26%, transparent);
+}
+
+#linktip:not([hidden]) {
+    animation: oc-fade-in calc(230ms * var(--oc-speed, 1)) ease-out;
+}
+
+@keyframes oc-fade-in {
+    from { opacity: 0; transform: translateY(3px); }
+}
+
+/* the line between the terminal and the list glows when it is pointed at or held */
+#sash::after {
+    transition: background-color calc(160ms * var(--oc-speed, 1)) ease-out calc(150ms * var(--oc-speed, 1)), box-shadow calc(320ms * var(--oc-speed, 1)) ease-out calc(150ms * var(--oc-speed, 1));
+}
+
+#sash:hover::after,
+#sash:focus-visible::after,
+#sash.dragging::after {
+    box-shadow: 0 0 6px 0 var(--vscode-sash-hoverBorder, #007fd4);
+}
+
+/* whoever asks for less motion gets none of it */
+@media (prefers-reduced-motion: reduce) {
+    #list .item,
+    #list .item .split,
+    #list .item .close,
+    #list .item .split svg path,
+    #list .item .close svg path,
+    #menu .entry,
+    #linktip,
+    #sash::after {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* the menu next to "+": a dropdown that looks like the menus of VS Code (it is drawn here, see media/main.js) */
+#menu {
+    position: fixed;
+    top: 0;
+    right: 8px;
+    z-index: 30;
+    box-sizing: border-box;
+    min-width: 220px;
+    max-width: calc(100% - 16px);
+    max-height: calc(100% - 8px);
+    overflow-y: auto;
+    padding: 4px 0;
+    outline: none;
+    background: var(--vscode-menu-background, var(--vscode-editorWidget-background, #252526));
+    color: var(--vscode-menu-foreground, var(--vscode-foreground, #cccccc));
+    border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border, #454545));
+    border-radius: 5px;
+    box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+    /* the size of the entries of the menus of VS Code: 12px text in rows of 24px */
+    font: 12px/24px var(--vscode-font-family, sans-serif);
+    user-select: none;
+    -webkit-user-select: none;
+    transform-origin: top right;
+}
+
+#menu[hidden] {
+    display: none;
+}
+
+/* it opens smoothly: it fades in while it slides down a little from the button that it belongs to */
+#menu:not([hidden]) {
+    animation: oc-menu-open calc(260ms * var(--oc-speed, 1)) cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+@keyframes oc-menu-open {
+    from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+    to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #menu:not([hidden]) { animation: none; }
+}
+
+#menu .entry {
+    height: 24px;
+    padding: 0 24px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 90ms ease-out;
+}
+
+/* the marked entry is not a solid blue square: a see-through veil of the text colour, so that the menu shows through it */
+#menu .entry.selected {
+    background: rgba(128, 128, 128, 0.22);
+    background: color-mix(in srgb, currentColor 16%, transparent);
+}
+
+#menu .separator {
+    height: 0;
+    margin: 5px 10px 6px;
+    border-top: 1px solid var(--vscode-menu-separatorBackground, #606060);
+}
+
+/* the hint that comes up on an address in the output, like the hover of VS Code */
+#linktip {
+    position: fixed;
+    z-index: 40;
+    box-sizing: border-box;
+    max-width: calc(100% - 8px);
+    padding: 2px 8px;
+    pointer-events: none;
+    white-space: nowrap;
+    background: var(--vscode-editorHoverWidget-background, #252526);
+    color: var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground, #cccccc));
+    border: 1px solid var(--vscode-editorHoverWidget-border, #454545);
+    border-radius: 3px;
+    box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+    font: 12px/18px var(--vscode-font-family, sans-serif);
+}
+
+#linktip[hidden] {
+    display: none;
 }
 
 #message {
@@ -38,4 +458,298 @@ html, body {
 
 #message[hidden] {
     display: none;
+}
+
+/* ---- find in the terminal (Ctrl+F) ---------------------------------------------------------------------------------------------- */
+#find {
+    position: absolute;
+    top: 6px;
+    right: 18px;
+    z-index: 25;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    box-sizing: border-box;
+    max-width: calc(100% - 28px);
+    padding: 4px 4px 4px 6px;
+    background: var(--vscode-editorWidget-background, #252526);
+    color: var(--vscode-editorWidget-foreground, var(--vscode-foreground, #cccccc));
+    border: 1px solid var(--vscode-editorWidget-border, var(--vscode-widget-border, #454545));
+    border-radius: 6px;
+    box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+    font: 12px/18px var(--vscode-font-family, sans-serif);
+    transform-origin: top right;
+}
+
+#find[hidden] {
+    display: none;
+}
+
+#find:not([hidden]) {
+    animation: oc-find-in calc(240ms * var(--oc-speed, 1)) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes oc-find-in {
+    from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+    to { opacity: 1; transform: none; }
+}
+
+#find .field {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    padding-right: 2px;
+    background: var(--vscode-input-background, rgba(128, 128, 128, 0.16));
+    border: 1px solid var(--vscode-input-border, transparent);
+    border-radius: 3px;
+    transition: border-color calc(160ms * var(--oc-speed, 1)) ease;
+}
+
+#find .field:focus-within {
+    border-color: var(--vscode-focusBorder, rgba(128, 128, 128, 0.7));
+}
+
+#find input {
+    width: 170px;
+    min-width: 60px;
+    padding: 3px 6px;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--vscode-input-foreground, inherit);
+    font: inherit;
+}
+
+#find input.invalid {
+    color: var(--vscode-errorForeground, #f48771);
+}
+
+#find .opt,
+#find .nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 3px;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    transition: background-color calc(140ms * var(--oc-speed, 1)) ease, transform calc(160ms * var(--oc-speed, 1)) cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#find .opt:hover,
+#find .nav:hover {
+    background: color-mix(in srgb, currentColor 16%, transparent);
+}
+
+#find .opt:active,
+#find .nav:active {
+    transform: scale(0.88);
+}
+
+#find .opt.word span {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* an option that is on: a see-through veil and a thin line, not a solid colour */
+#find .opt.on {
+    background: color-mix(in srgb, currentColor 22%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 40%, transparent);
+}
+
+#find .nav svg {
+    width: 16px;
+    height: 16px;
+}
+
+#find .count {
+    min-width: 66px;
+    padding: 0 6px;
+    text-align: center;
+    white-space: nowrap;
+    opacity: 0.85;
+}
+
+#find .count.none {
+    color: var(--vscode-errorForeground, #f48771);
+    opacity: 1;
+}
+
+#find .close:hover {
+    color: var(--vscode-errorForeground, #f48771);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #find,
+    #find .field,
+    #find .opt,
+    #find .nav {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* ---- the state of a terminal in the list: running, working, ready for you, needs you, done, failed, ended --------------------------- */
+/* A small round mark, 12 px, drawn with the colours of the theme; no number. Every state has its own look, so that they tell apart at a glance:
+   running = green dot that breathes, working = ring that turns, ready for you = calm ring with a dot, needs you = amber dot that pulses,
+   done = green disc with a check, failed = red disc with a cross, ended = grey square. */
+#list .item .status {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    margin-left: 2px;
+    line-height: 1;
+}
+
+#list .item .status[data-state="idle"],
+#list .item .status:not([data-state]) {
+    display: none;
+}
+
+#list .item .status .dot {
+    position: relative;
+    box-sizing: border-box;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+/* running: a program runs (a server, a build): a green dot that breathes */
+#list .item .status[data-state="running"] {
+    color: var(--vscode-terminal-ansiGreen, #23d18b);
+}
+
+#list .item .status[data-state="running"] .dot {
+    width: 9px;
+    height: 9px;
+    animation: oc-breathe calc(2400ms * var(--oc-speed, 1)) ease-in-out infinite;
+}
+
+/* working: a ring with a bright arc that turns */
+#list .item .status[data-state="working"] {
+    color: var(--vscode-progressBar-background, var(--vscode-textLink-foreground, #3794ff));
+}
+
+#list .item .status[data-state="working"] .dot {
+    background: transparent;
+    border: 2px solid color-mix(in srgb, currentColor 22%, transparent);
+    border-top-color: currentColor;
+    animation: oc-spin calc(800ms * var(--oc-speed, 1)) linear infinite;
+}
+
+/* ready for you (an agent that is quiet): a calm ring with a dot in it, that rests slowly */
+#list .item .status[data-state="waiting"] {
+    color: var(--vscode-charts-green, var(--vscode-terminal-ansiGreen, #23d18b));
+}
+
+#list .item .status[data-state="waiting"] .dot {
+    background: radial-gradient(circle, currentColor 0 30%, transparent 33%);
+    border: 2px solid color-mix(in srgb, currentColor 60%, transparent);
+    animation: oc-rest calc(3200ms * var(--oc-speed, 1)) ease-in-out infinite;
+}
+
+/* needs you: it asks a question and waits for the answer (amber, it pulses) */
+#list .item .status[data-state="blocked"] {
+    color: var(--vscode-editorWarning-foreground, #cca700);
+}
+
+#list .item .status[data-state="blocked"] .dot {
+    animation: oc-pulse calc(1200ms * var(--oc-speed, 1)) ease-out infinite;
+}
+
+/* done: a green disc with a white check; failed: a red disc with a white cross; ended: a small grey square */
+#list .item .status[data-state="done"] {
+    color: var(--vscode-testing-iconPassed, #73c991);
+}
+
+#list .item .status[data-state="done"] .dot::after {
+    content: '';
+    position: absolute;
+    left: 3.6px;
+    top: 1.6px;
+    width: 3px;
+    height: 5.6px;
+    border: solid var(--vscode-editor-background, #1e1e1e);
+    border-width: 0 1.7px 1.7px 0;
+    transform: rotate(40deg);
+}
+
+#list .item .status[data-state="error"] {
+    color: var(--vscode-errorForeground, #f48771);
+}
+
+#list .item .status[data-state="error"] .dot::before,
+#list .item .status[data-state="error"] .dot::after {
+    content: '';
+    position: absolute;
+    left: 4.6px;
+    top: 2.2px;
+    width: 1.7px;
+    height: 6.6px;
+    border-radius: 1px;
+    background: var(--vscode-editor-background, #1e1e1e);
+    transform: rotate(45deg);
+}
+
+#list .item .status[data-state="error"] .dot::after {
+    transform: rotate(-45deg);
+}
+
+#list .item .status[data-state="exited"] {
+    color: var(--vscode-disabledForeground, #8a8a8a);
+}
+
+#list .item .status[data-state="exited"] .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+}
+
+/* a terminal that needs you, or that finished while you did not look, is marked at its side as well */
+#list .item:has(.status.attention[data-state="blocked"]),
+#list .item:has(.status.attention[data-state="error"]) {
+    box-shadow: inset 2px 0 0 var(--vscode-editorWarning-foreground, #cca700);
+}
+
+#list .item:has(.status.attention[data-state="done"]) {
+    box-shadow: inset 2px 0 0 var(--vscode-testing-iconPassed, #73c991);
+}
+
+@keyframes oc-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes oc-breathe {
+    0%, 100% { opacity: 0.45; transform: scale(0.85); }
+    50% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes oc-rest {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+}
+
+@keyframes oc-pulse {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 55%, transparent); }
+    70%, 100% { box-shadow: 0 0 0 6px transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #list .item .status .dot {
+        animation: none !important;
+    }
+}
+
+/* a terminal that was given a colour (menu of its row): its icon wears it */
+#list .item[data-color] > .icon {
+    color: var(--oc-tab);
 }

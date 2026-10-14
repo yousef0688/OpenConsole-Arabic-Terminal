@@ -1,0 +1,98 @@
+{
+  "commands": [
+    { "command": "openconsole.log.insert", "title": "OpenConsole: Insert Log Message" },
+    { "command": "openconsole.log.info", "title": "OpenConsole: Insert Info Log Message" },
+    { "command": "openconsole.log.debug", "title": "OpenConsole: Insert Debug Log Message" },
+    { "command": "openconsole.log.table", "title": "OpenConsole: Insert Table Log Message" },
+    { "command": "openconsole.log.warn", "title": "OpenConsole: Insert Warn Log Message" },
+    { "command": "openconsole.log.error", "title": "OpenConsole: Insert Error Log Message" },
+    { "command": "openconsole.log.custom", "title": "OpenConsole: Insert Custom Log Message" },
+    { "command": "openconsole.log.commentAll", "title": "OpenConsole: Comment Log Messages" },
+    { "command": "openconsole.log.uncommentAll", "title": "OpenConsole: Uncomment Log Messages" },
+    { "command": "openconsole.log.deleteAll", "title": "OpenConsole: Delete Log Messages" },
+    { "command": "openconsole.log.correctAll", "title": "OpenConsole: Correct Log Messages" }
+  ],
+  "keybindings": [
+    { "command": "openconsole.log.insert", "key": "ctrl+alt+l l", "mac": "cmd+alt+l l", "when": "editorTextFocus && !editorReadonly" },
+    { "command": "openconsole.log.info", "key": "ctrl+alt+l i", "mac": "cmd+alt+l i", "when": "editorTextFocus && !editorReadonly" },
+    { "command": "openconsole.log.debug", "key": "ctrl+alt+l d", "mac": "cmd+alt+l d", "when": "editorTextFocus && !editorReadonly" },
+    { "command": "openconsole.log.table", "key": "ctrl+alt+l t", "mac": "cmd+alt+l t", "when": "editorTextFocus && !editorReadonly" },
+    { "command": "openconsole.log.warn", "key": "ctrl+alt+l w", "mac": "cmd+alt+l w", "when": "editorTextFocus && !editorReadonly" },
+    { "command": "openconsole.log.error", "key": "ctrl+alt+l e", "mac": "cmd+alt+l e", "when": "editorTextFocus && !editorReadonly" },
+    { "command": "openconsole.log.custom", "key": "ctrl+alt+l m", "mac": "cmd+alt+l m", "when": "editorTextFocus && !editorReadonly" },
+    { "command": "openconsole.log.commentAll", "key": "ctrl+alt+l c", "mac": "cmd+alt+l c", "when": "editorTextFocus && !editorReadonly" },
+    { "command": "openconsole.log.uncommentAll", "key": "ctrl+alt+l u", "mac": "cmd+alt+l u", "when": "editorTextFocus && !editorReadonly" },
+    { "command": "openconsole.log.deleteAll", "key": "ctrl+alt+l x", "mac": "cmd+alt+l x", "when": "editorTextFocus && !editorReadonly" },
+    { "command": "openconsole.log.correctAll", "key": "ctrl+alt+l r", "mac": "cmd+alt+l r", "when": "editorTextFocus && !editorReadonly" }
+  ],
+  "configuration": {
+    "properties": {
+      "openconsole.log.wrapLogMessage": {
+        "type": "boolean",
+        "default": false,
+        "markdownDescription": "Put a line of dashes above and below every log that **Insert Log Message** makes."
+      },
+      "openconsole.log.logMessagePrefix": {
+        "type": "string",
+        "default": "▶",
+        "markdownDescription": "The first element of the message. Together with `#openconsole.log.delimiterInsideMessage#` it marks a log as made by OpenConsole: **Comment**, **Uncomment**, **Delete** and **Correct Log Messages** only touch logs that have both. Logs made before you change it are no longer found."
+      },
+      "openconsole.log.logMessageSuffix": {
+        "type": "string",
+        "default": ":",
+        "markdownDescription": "Put right after the variable in the message."
+      },
+      "openconsole.log.includeFilename": {
+        "type": "boolean",
+        "default": false,
+        "markdownDescription": "Add the name of the file to the message."
+      },
+      "openconsole.log.includeLineNum": {
+        "type": "boolean",
+        "default": false,
+        "markdownDescription": "Add the line number of the log line to the message. **Correct Log Messages** refreshes it after the code moved."
+      },
+      "openconsole.log.addSemicolonInTheEnd": {
+        "type": "boolean",
+        "default": false,
+        "markdownDescription": "End the JavaScript and TypeScript log with a semicolon (Python never gets one)."
+      },
+      "openconsole.log.insertEnclosingClass": {
+        "type": "boolean",
+        "default": true,
+        "markdownDescription": "Add the name of the class that holds the variable to the message."
+      },
+      "openconsole.log.insertEnclosingFunction": {
+        "type": "boolean",
+        "default": true,
+        "markdownDescription": "Add the name of the function or method that holds the variable to the message."
+      },
+      "openconsole.log.insertEmptyLineBeforeLogMessage": {
+        "type": "boolean",
+        "default": false,
+        "markdownDescription": "Put an empty line above the log. **Delete Log Messages** removes an empty line next to a log only while this setting is on."
+      },
+      "openconsole.log.insertEmptyLineAfterLogMessage": {
+        "type": "boolean",
+        "default": false,
+        "markdownDescription": "Put an empty line below the log. **Delete Log Messages** removes an empty line next to a log only while this setting is on."
+      },
+      "openconsole.log.delimiterInsideMessage": {
+        "type": "string",
+        "default": "›",
+        "markdownDescription": "Put, with a space on each side, between the elements of the message."
+      },
+      "openconsole.log.quote": {
+        "type": "string",
+        "enum": ["\"", "'", "`"],
+        "default": "\"",
+        "markdownDescription": "The quote of the message. It changes by itself when the selected text has quotes."
+      },
+      "openconsole.log.logFunction": {
+        "type": "string",
+        "default": "log",
+        "markdownDescription": "The function that **Insert Custom Log Message** calls, for example `logger.debug`."
+      }
+    }
+  }
+}

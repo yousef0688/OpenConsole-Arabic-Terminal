@@ -4,7 +4,7 @@
 const { spawn } = require('node:child_process');
 const { EventEmitter } = require('node:events');
 const { StringDecoder } = require('node:string_decoder');
-const { ToParent, encodeInput, encodeInputBytes, encodeResize, FrameReader } = require('./frames');
+const { ToParent, encodeInput, encodeInputBytes, encodeResize, encodeClear, FrameReader } = require('./frames');
 
 /** Quotes one argument the way CreateProcess and the C runtime expect it. */
 function quoteArgument(arg) {
@@ -114,6 +114,11 @@ class TerminalSession extends EventEmitter {
 
     resize(columns, rows) {
         if (this.child && !this.exited) this.child.stdin.write(encodeResize(columns, rows));
+    }
+
+    /** The pseudo console forgets what is on its screen (the terminal in front cleared its own copy of it). */
+    clearScreen(keepCursorRow = true) {
+        if (this.child && !this.exited) this.child.stdin.write(encodeClear(keepCursorRow));
     }
 
     dispose() {

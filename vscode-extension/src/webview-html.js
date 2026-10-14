@@ -35,14 +35,30 @@ function getHtml(webview, extensionUri, joinPath) {
 <title>OpenConsole</title>
 </head>
 <body>
-<div id="terminal"></div>
+<div id="app">
+<div id="terminals"></div>
+<div id="list" hidden></div>
+</div>
 <div id="message" hidden></div>
 ${script(['vendor', 'xterm.js'])}
 ${script(['vendor', 'addon-fit.js'])}
 ${script(['vendor', 'addon-unicode11.js'])}
+${script(['vendor', 'addon-web-links.js'])}
+${script(['vendor', 'addon-search.js'])}
 ${script(['vendor', 'bidi.js'])}
+${script(['vendor', 'material-icons.js'])}
+${script(['custom-icons.js'])}
+${script(['program-icons.js'])}
 ${script(['arabic-layout.js'])}
 ${script(['row-patcher.js'])}
+${script(['image-chips.js'])}
+${script(['suggest.js'])}
+${script(['links.js'])}
+${script(['filelinks.js'])}
+${script(['find.js'])}
+${script(['agent-state.js'])}
+${script(['agent-rules.js'])}
+${script(['agent-view.js'])}
 ${script(['main.js'])}
 </body>
 </html>`;

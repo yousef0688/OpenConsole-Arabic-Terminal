@@ -6,6 +6,7 @@
 //
 //   parent -> bridge   1 INPUT   bytes for the terminal input (what the user types, as UTF-8 / VT sequences)
 //                      2 RESIZE  u16 columns, u16 rows
+//                      3 CLEAR   u8 1: keep the row of the cursor (the terminal cleared its screen, the pseudo console forgets it too)
 //   bridge -> parent   1 OUTPUT  bytes the program wrote (UTF-8 / VT sequences)
 //                      2 EXIT    u32 exit code of the command
 //                      3 PROCS   names of the programs running under the command, lower case, one per line
@@ -14,6 +15,7 @@
 //
 // When the parent closes the pipe, the pseudo console is closed, which ends the command and everything it started.
 // Set the environment variable OC_BRIDGE_TRACE to see what the bridge does on its standard error.
+// OC_CONPTY_FLAGS (a decimal number) replaces the flags of CreatePseudoConsole, to try the others (the default is 0).
 //
 // Build: native\build.ps1   (static runtime, no DLLs needed besides the ones of Windows)
 
@@ -45,12 +47,24 @@ namespace
     {
         FromParentInput = 1,
         FromParentResize = 2,
+        FromParentClear = 3,
         ToParentOutput = 1,
         ToParentExit = 2,
         ToParentProcs = 3,
         ToParentReady = 4,
         ToParentError = 5,
     };
+
+    // The pseudo console functions: the ones of Windows, or (when the parent names it in OC_CONPTY_DLL) the ones of the conpty.dll
+    // that VS Code ships for its own terminal. That one comes with its own OpenConsole.exe, and it can also clear the pseudo console.
+    using CreatePtyFn = HRESULT(WINAPI*)(COORD, HANDLE, HANDLE, DWORD, HPCON*);
+    using ResizePtyFn = HRESULT(WINAPI*)(HPCON, COORD);
+    using ClosePtyFn = void(WINAPI*)(HPCON);
+    using ClearPtyFn = HRESULT(WINAPI*)(HPCON, BOOL);
+    CreatePtyFn g_createPty = &CreatePseudoConsole;
+    ResizePtyFn g_resizePty = &ResizePseudoConsole;
+    ClosePtyFn g_closePty = &ClosePseudoConsole;
+    ClearPtyFn g_clearPty = nullptr;
 
     HANDLE g_stdout = INVALID_HANDLE_VALUE;
     std::mutex g_writeLock;
@@ -126,6 +140,49 @@ namespace
         std::string s(static_cast<size_t>(n), '\0');
         WideCharToMultiByte(CP_UTF8, 0, w.data(), static_cast<int>(w.size()), s.data(), n, nullptr, nullptr);
         return s;
+    }
+
+    void UseSystemConPty()
+    {
+        g_createPty = &CreatePseudoConsole;
+        g_resizePty = &ResizePseudoConsole;
+        g_closePty = &ClosePseudoConsole;
+        g_clearPty = nullptr;
+    }
+
+    // Loads the conpty.dll that OC_CONPTY_DLL names. Returns false, and keeps the functions of Windows, when there is none or when
+    // it cannot be used.
+    bool UseSideloadedConPty()
+    {
+        wchar_t path[2048];
+        const DWORD n = GetEnvironmentVariableW(L"OC_CONPTY_DLL", path, ARRAYSIZE(path));
+        SetEnvironmentVariableW(L"OC_CONPTY_DLL", nullptr);      // the shell has no use for it
+        if (n == 0 || n >= ARRAYSIZE(path))
+        {
+            return false;
+        }
+        const HMODULE dll = LoadLibraryExW(path, nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
+        if (!dll)
+        {
+            Trace("cannot load " + ToUtf8(path) + ", error " + std::to_string(GetLastError()));
+            return false;
+        }
+        const auto create = reinterpret_cast<CreatePtyFn>(GetProcAddress(dll, "CreatePseudoConsole"));
+        const auto resize = reinterpret_cast<ResizePtyFn>(GetProcAddress(dll, "ResizePseudoConsole"));
+        const auto close = reinterpret_cast<ClosePtyFn>(GetProcAddress(dll, "ClosePseudoConsole"));
+        const auto clear = reinterpret_cast<ClearPtyFn>(GetProcAddress(dll, "ClearPseudoConsole"));
+        if (!create || !resize || !close)
+        {
+            Trace("the functions of the pseudo console are missing in " + ToUtf8(path));
+            FreeLibrary(dll);
+            return false;
+        }
+        g_createPty = create;
+        g_resizePty = resize;
+        g_closePty = close;
+        g_clearPty = clear;
+        Trace("using the pseudo console of " + ToUtf8(path));
+        return true;
     }
 
     std::wstring Lower(std::wstring s)
@@ -216,7 +273,24 @@ int wmain(int argc, wchar_t** argv)
     }
 
     HPCON pseudoConsole = nullptr;
-    const HRESULT hr = CreatePseudoConsole(COORD{ columns, rows }, inputRead, outputWrite, 0, &pseudoConsole);
+    // The flags of CreatePseudoConsole. OC_CONPTY_FLAGS (a decimal number) replaces them, to try the others.
+    DWORD flags = 0;
+    {
+        wchar_t text[16];
+        const DWORD n = GetEnvironmentVariableW(L"OC_CONPTY_FLAGS", text, ARRAYSIZE(text));
+        if (n > 0 && n < ARRAYSIZE(text)) flags = wcstoul(text, nullptr, 10);
+        SetEnvironmentVariableW(L"OC_CONPTY_FLAGS", nullptr);      // the shell has no use for it
+    }
+    Trace("pseudo console flags: " + std::to_string(flags));
+    const bool sideloaded = UseSideloadedConPty();
+    HRESULT hr = g_createPty(COORD{ columns, rows }, inputRead, outputWrite, flags, &pseudoConsole);
+    if (FAILED(hr) && sideloaded)
+    {
+        Trace("the pseudo console of the sideloaded conpty.dll failed (0x" + std::to_string(static_cast<unsigned long>(hr)) + "), using the one of Windows");
+        UseSystemConPty();
+        pseudoConsole = nullptr;
+        hr = g_createPty(COORD{ columns, rows }, inputRead, outputWrite, flags, &pseudoConsole);
+    }
     if (FAILED(hr))
     {
         SendError("CreatePseudoConsole failed (this needs Windows 10 version 1809 or later)");
@@ -318,7 +392,7 @@ int wmain(int argc, wchar_t** argv)
             std::lock_guard<std::mutex> lock(g_consoleLock);
             if (pseudoConsole)
             {
-                ClosePseudoConsole(pseudoConsole);   // makes the output pipe end
+                g_closePty(pseudoConsole);   // makes the output pipe end
                 pseudoConsole = nullptr;
             }
         }
@@ -360,7 +434,23 @@ int wmain(int argc, wchar_t** argv)
             std::lock_guard<std::mutex> lock(g_consoleLock);
             if (pseudoConsole)
             {
-                ResizePseudoConsole(pseudoConsole, COORD{ static_cast<SHORT>(std::max<uint16_t>(1, c)), static_cast<SHORT>(std::max<uint16_t>(1, r)) });
+                g_resizePty(pseudoConsole, COORD{ static_cast<SHORT>(std::max<uint16_t>(1, c)), static_cast<SHORT>(std::max<uint16_t>(1, r)) });
+            }
+        }
+        else if (header[0] == FromParentClear)
+        {
+            // When the terminal clears its screen, the pseudo console still holds what was on it and draws it again at the next
+            // resize. The function that clears it is not in Windows; it is in the conpty.dll that VS Code ships (g_clearPty is set
+            // only then). Without it, only the terminal in front is cleared.
+            std::lock_guard<std::mutex> lock(g_consoleLock);
+            if (pseudoConsole && g_clearPty)
+            {
+                g_clearPty(pseudoConsole, (length >= 1 && payload[0]) ? TRUE : FALSE);
+                Trace("cleared the pseudo console");
+            }
+            else
+            {
+                Trace("clear: this pseudo console cannot be cleared");
             }
         }
     }
@@ -371,7 +461,7 @@ int wmain(int argc, wchar_t** argv)
         std::lock_guard<std::mutex> lock(g_consoleLock);
         if (pseudoConsole)
         {
-            ClosePseudoConsole(pseudoConsole);
+            g_closePty(pseudoConsole);
             pseudoConsole = nullptr;
         }
     }

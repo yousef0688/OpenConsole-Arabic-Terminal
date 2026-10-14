@@ -1,10 +1,19 @@
 {
-  "name": "openconsole-terminal",
-  "displayName": "OpenConsole Arabic Terminal",
+  "name": "openconsole",
+  "displayName": "OpenConsole",
   "description": "A terminal in the panel of VS Code that shows Arabic and Hebrew correctly: connected letters and right-to-left order.",
-  "version": "0.1.0",
+  "version": "0.1.25",
   "publisher": "openconsole",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yousef0688/OpenConsole-Arabic-Terminal.git",
+    "directory": "vscode-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/yousef0688/OpenConsole-Arabic-Terminal/issues"
+  },
+  "homepage": "https://github.com/yousef0688/OpenConsole-Arabic-Terminal#readme",
   "preview": true,
   "engines": {
     "vscode": "^1.90.0"
@@ -61,19 +70,217 @@
         "title": "OpenConsole: Focus Terminal"
       },
       {
+        "command": "openconsole.newTerminal",
+        "title": "OpenConsole: New Terminal"
+      },
+      {
         "command": "openconsole.newEditorTerminal",
-        "title": "OpenConsole: New Terminal in Editor",
-        "icon": "$(add)"
+        "title": "OpenConsole: New Terminal in Editor"
+      },
+      {
+        "command": "openconsole.splitTerminal",
+        "title": "OpenConsole: Split Terminal"
       },
       {
         "command": "openconsole.restart",
-        "title": "OpenConsole: Restart Terminal",
-        "icon": "$(debug-restart)"
+        "title": "OpenConsole: Restart Terminal"
       },
       {
         "command": "openconsole.clear",
-        "title": "OpenConsole: Clear Terminal",
+        "title": "OpenConsole: Clear Terminal"
+      },
+      {
+        "command": "openconsole.find",
+        "title": "OpenConsole: Find in Terminal"
+      },
+      {
+        "command": "openconsole.nextAttention",
+        "title": "OpenConsole: Go to the Next Terminal That Needs You"
+      },
+      {
+        "command": "openconsole.attentionList",
+        "title": "OpenConsole: Terminals That Run, Wait or Need You..."
+      },
+      {
+        "command": "openconsole.explainState",
+        "title": "OpenConsole: Explain the State of This Terminal"
+      },
+      {
+        "command": "openconsole.renameTerminal",
+        "title": "OpenConsole: Rename Terminal..."
+      },
+      {
+        "command": "openconsole.changeTerminalColor",
+        "title": "OpenConsole: Change Terminal Colour..."
+      },
+      {
+        "command": "openconsole.runScripts",
+        "title": "OpenConsole: Run package.json Scripts in Parallel..."
+      },
+      {
+        "command": "openconsole.launchGroup",
+        "title": "OpenConsole: Start a Saved Group of Terminals..."
+      },
+      {
+        "command": "openconsole.editGroups",
+        "title": "OpenConsole: Edit Saved Groups (.openconsole/groups.json)"
+      },
+      {
+        "command": "openconsole.newWorktreeTerminal",
+        "title": "OpenConsole: New Terminal in a Fresh Git Worktree..."
+      },
+      {
+        "command": "openconsole.removeWorktree",
+        "title": "OpenConsole: Remove an Agent Worktree..."
+      },
+      {
+        "command": "openconsole.web.share",
+        "title": "OpenConsole: Share Terminals on the Web..."
+      },
+      {
+        "command": "openconsole.web.newLink",
+        "title": "OpenConsole: New Web Pairing Link"
+      },
+      {
+        "command": "openconsole.web.devices",
+        "title": "OpenConsole: Browsers That Are Paired..."
+      },
+      {
+        "command": "openconsole.web.stop",
+        "title": "OpenConsole: Stop Sharing on the Web"
+      },
+      {
+        "command": "openconsole.web.menu",
+        "title": "OpenConsole: Web Sharing Menu..."
+      },
+      {
+        "command": "openconsole.log.insert",
+        "title": "OpenConsole: Insert Log Message"
+      },
+      {
+        "command": "openconsole.log.info",
+        "title": "OpenConsole: Insert Info Log Message"
+      },
+      {
+        "command": "openconsole.log.debug",
+        "title": "OpenConsole: Insert Debug Log Message"
+      },
+      {
+        "command": "openconsole.log.table",
+        "title": "OpenConsole: Insert Table Log Message"
+      },
+      {
+        "command": "openconsole.log.warn",
+        "title": "OpenConsole: Insert Warn Log Message"
+      },
+      {
+        "command": "openconsole.log.error",
+        "title": "OpenConsole: Insert Error Log Message"
+      },
+      {
+        "command": "openconsole.log.custom",
+        "title": "OpenConsole: Insert Custom Log Message"
+      },
+      {
+        "command": "openconsole.log.commentAll",
+        "title": "OpenConsole: Comment Log Messages"
+      },
+      {
+        "command": "openconsole.log.uncommentAll",
+        "title": "OpenConsole: Uncomment Log Messages"
+      },
+      {
+        "command": "openconsole.log.deleteAll",
+        "title": "OpenConsole: Delete Log Messages"
+      },
+      {
+        "command": "openconsole.log.correctAll",
+        "title": "OpenConsole: Correct Log Messages"
+      },
+      {
+        "command": "openconsole.newTerminalWithProfile",
+        "title": "OpenConsole: New Terminal with Profile..."
+      },
+      {
+        "command": "openconsole.selectDefaultProfile",
+        "title": "OpenConsole: Select Default Profile"
+      },
+      {
+        "command": "openconsole.scrollToPreviousCommand",
+        "title": "OpenConsole: Scroll to Previous Command"
+      },
+      {
+        "command": "openconsole.scrollToNextCommand",
+        "title": "OpenConsole: Scroll to Next Command"
+      },
+      {
+        "command": "openconsole.runActiveFile",
+        "title": "OpenConsole: Run Active File"
+      },
+      {
+        "command": "openconsole.runSelectedText",
+        "title": "OpenConsole: Run Selected Text"
+      },
+      {
+        "command": "openconsole.recentDirectory",
+        "title": "OpenConsole: Go to Recent Directory..."
+      },
+      {
+        "command": "openconsole.recentCommand",
+        "title": "OpenConsole: Run Recent Command..."
+      },
+      {
+        "command": "openconsole.clearCommandHistory",
+        "title": "OpenConsole: Forget the Remembered Commands and Folders"
+      },
+      {
+        "command": "openconsole.panel.scrollToPreviousCommand",
+        "title": "Scroll to Previous Command"
+      },
+      {
+        "command": "openconsole.panel.scrollToNextCommand",
+        "title": "Scroll to Next Command"
+      },
+      {
+        "command": "openconsole.panel.runActiveFile",
+        "title": "Run Active File"
+      },
+      {
+        "command": "openconsole.panel.runSelectedText",
+        "title": "Run Selected Text"
+      },
+      {
+        "command": "openconsole.panel.recentDirectory",
+        "title": "Go to Recent Directory..."
+      },
+      {
+        "command": "openconsole.panel.recentCommand",
+        "title": "Run Recent Command..."
+      },
+      {
+        "command": "openconsole.panel.newTerminal",
+        "title": "New Terminal",
+        "icon": "$(add)"
+      },
+      {
+        "command": "openconsole.panel.newTerminalMenu",
+        "title": "Launch Profile...",
+        "icon": "$(chevron-down)"
+      },
+      {
+        "command": "openconsole.panel.restart",
+        "title": "Restart Terminal",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "openconsole.panel.clear",
+        "title": "Clear Terminal",
         "icon": "$(clear-all)"
+      },
+      {
+        "command": "openconsole.panel.web",
+        "title": "Share Terminals on the Web",
+        "icon": "$(broadcast)"
       },
       {
         "command": "openconsole.sendText",
@@ -83,24 +290,118 @@
     "menus": {
       "view/title": [
         {
-          "command": "openconsole.newEditorTerminal",
+          "command": "openconsole.panel.newTerminal",
           "when": "view == openconsole.terminal",
           "group": "navigation@1"
         },
         {
-          "command": "openconsole.restart",
+          "command": "openconsole.panel.newTerminalMenu",
           "when": "view == openconsole.terminal",
           "group": "navigation@2"
         },
         {
-          "command": "openconsole.clear",
+          "command": "openconsole.newEditorTerminal",
+          "when": "view == openconsole.terminal",
+          "group": "1_openconsole@1"
+        },
+        {
+          "command": "openconsole.panel.restart",
           "when": "view == openconsole.terminal",
           "group": "navigation@3"
+        },
+        {
+          "command": "openconsole.panel.clear",
+          "when": "view == openconsole.terminal",
+          "group": "navigation@4"
+        },
+        {
+          "command": "openconsole.panel.scrollToPreviousCommand",
+          "when": "view == openconsole.terminal",
+          "group": "2_scroll@1"
+        },
+        {
+          "command": "openconsole.panel.scrollToNextCommand",
+          "when": "view == openconsole.terminal",
+          "group": "2_scroll@2"
+        },
+        {
+          "command": "openconsole.panel.clear",
+          "when": "view == openconsole.terminal",
+          "group": "3_clear@1"
+        },
+        {
+          "command": "openconsole.panel.runActiveFile",
+          "when": "view == openconsole.terminal",
+          "group": "4_run@1"
+        },
+        {
+          "command": "openconsole.panel.runSelectedText",
+          "when": "view == openconsole.terminal",
+          "group": "4_run@2"
+        },
+        {
+          "command": "openconsole.panel.recentDirectory",
+          "when": "view == openconsole.terminal",
+          "group": "5_recent@1"
+        },
+        {
+          "command": "openconsole.panel.recentCommand",
+          "when": "view == openconsole.terminal",
+          "group": "5_recent@2"
+        },
+        {
+          "command": "openconsole.panel.web",
+          "when": "view == openconsole.terminal",
+          "group": "navigation@5"
         }
       ],
       "commandPalette": [
         {
           "command": "openconsole.sendText",
+          "when": "false"
+        },
+        {
+          "command": "openconsole.panel.newTerminal",
+          "when": "false"
+        },
+        {
+          "command": "openconsole.panel.newTerminalMenu",
+          "when": "false"
+        },
+        {
+          "command": "openconsole.panel.scrollToPreviousCommand",
+          "when": "false"
+        },
+        {
+          "command": "openconsole.panel.scrollToNextCommand",
+          "when": "false"
+        },
+        {
+          "command": "openconsole.panel.runActiveFile",
+          "when": "false"
+        },
+        {
+          "command": "openconsole.panel.runSelectedText",
+          "when": "false"
+        },
+        {
+          "command": "openconsole.panel.recentDirectory",
+          "when": "false"
+        },
+        {
+          "command": "openconsole.panel.recentCommand",
+          "when": "false"
+        },
+        {
+          "command": "openconsole.panel.restart",
+          "when": "false"
+        },
+        {
+          "command": "openconsole.panel.clear",
+          "when": "false"
+        },
+        {
+          "command": "openconsole.panel.web",
           "when": "false"
         }
       ]
@@ -125,17 +426,46 @@
           "markdownDescription": "Arguments for `#openconsole.shell#`.",
           "scope": "machine"
         },
+        "openconsole.suggestions": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "While you type at a prompt, show the rest of the newest command of your history that starts with what you typed, in grey after the cursor; the **Right Arrow** (or **End**) types it. The history is the one of PowerShell (its `ConsoleHost_history.txt`) and the commands typed in these terminals, which are remembered (with the folders of the prompts, for **Go to Recent Directory**). Off: nothing is shown and nothing is remembered. **OpenConsole: Forget the Remembered Commands and Folders** deletes what was remembered."
+        },
+        "openconsole.motionSpeed": {
+          "type": "number",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 4,
+          "markdownDescription": "How long the motion of the terminal takes (the buttons of the list, the menu next to **+**, the new rows): `1` is the normal speed, `2` takes twice as long, `0.5` half as long, `0` turns it off. Windows' *reduce motion* setting turns it off too."
+        },
+        "openconsole.rightClickPaste": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "The right mouse button pastes what was copied last, as in the console window and in Windows Terminal, instead of opening the menu of VS Code. A program that uses the mouse (pi, opencode, vim) gets the right button itself: hold **Shift** to paste then. Turn it off to get the menu."
+        },
+        "openconsole.clearRestartsTerminal": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "**Clear** starts the terminal again: the shell and the programs that run in it end, and an empty terminal takes their place. Turn it off for a Clear that only empties the screen and keeps the shell (it needs the pseudo console of VS Code, see `#openconsole.useVSCodeConpty#`; terminals that start after you change it use it)."
+        },
+        "openconsole.useVSCodeConpty": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Only used while `#openconsole.clearRestartsTerminal#` is off. Then a terminal runs in the pseudo console that VS Code ships with for its own terminal (`conpty.dll` with its `OpenConsole.exe`, when it is there), because only that one lets **Clear** also clear the pseudo console, so that the cleared lines do not come back when the panel is resized. The price: after a resize it does not repaint the screen, so the line that you are typing is cut off when the terminal gets narrower. Otherwise (and when this is off) the pseudo console of Windows is used, which repaints, so text wraps again at every new width."
+        },
         "openconsole.bidiMode": {
           "type": "string",
           "enum": [
             "auto",
             "implicit",
-            "visual"
+            "visual",
+            "words"
           ],
           "enumDescriptions": [
-            "Reorder right-to-left text, except while a program from `openconsole.visualBidiApps` runs in the terminal.",
+            "Reorder right-to-left text, except while a program from `openconsole.visualBidiApps` (visual) or `openconsole.wordsBidiApps` (words) runs in the terminal.",
             "Always reorder right-to-left text (programs write it in reading order).",
-            "The program has already reordered its text: keep the order and only join the letters."
+            "The program has already reordered its text: keep the order and only join the letters.",
+            "Every word of Arabic or Hebrew letters is mirrored on its own and the words stay in the order they were typed. Text that is being typed does not move, and a long text that wraps reads from top to bottom. For coding agents with a text box, such as pi and opencode."
           ],
           "default": "auto",
           "markdownDescription": "How right-to-left text is laid out. Leave it on `auto` unless you know why."
@@ -149,6 +479,16 @@
             "claude.exe"
           ],
           "markdownDescription": "Programs that reorder right-to-left text themselves (they assume a terminal that cannot). Names of executable files. While one of them runs in the terminal, the layout keeps its order and only joins the letters."
+        },
+        "openconsole.wordsBidiApps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "opencode.exe"
+          ],
+          "markdownDescription": "Programs that redraw a text box while you type in it. While one of them runs in the terminal, each Arabic or Hebrew word is mirrored on its own and the words keep the order they were typed in (`words` mode), so the text does not move with every letter. Names of executable files. pi is a Node.js program: set `#openconsole.bidiMode#` to `words` to use it with pi."
         },
         "openconsole.fontFamily": {
           "type": "string",
@@ -169,21 +509,273 @@
           "type": "string",
           "default": "",
           "markdownDescription": "A font for the icons that programs draw with symbols of the private use area, for example `CaskaydiaCove NFM`."
+        },
+        "openconsole.attention.notify": {
+          "type": "string",
+          "enum": [
+            "all",
+            "important",
+            "off"
+          ],
+          "enumDescriptions": [
+            "A notification when a terminal needs you, calls you, fails or finishes (when you were not looking at it).",
+            "Only when a terminal needs you (a question, a permission), calls you with the bell, fails or ends.",
+            "No notifications. The status bar item and the marks in the list stay."
+          ],
+          "default": "all",
+          "markdownDescription": "When OpenConsole tells you about a terminal that you are not looking at: an agent (Claude Code, Codex, opencode, pi...) asks a question or finishes, a build ends. A terminal that is shown, in a window that has the focus, is never reported, and the same thing about the same terminal is told again after 30 seconds at the earliest."
+        },
+        "openconsole.attention.minWorkingSeconds": {
+          "type": "number",
+          "default": 15,
+          "minimum": 0,
+          "maximum": 3600,
+          "markdownDescription": "A program that ends, or an agent that goes quiet, is reported as *done* only when it worked at least this long (seconds). Questions to you are always reported."
+        },
+        "openconsole.attention.statusBar": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show `$(bell) 2` in the status bar when terminals need you. Click it to choose one."
+        },
+        "openconsole.agentRules": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "required": [
+              "state"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "A name for the rule; it shows as the evidence in \"Explain the State of This Terminal\"."
+              },
+              "kind": {
+                "type": "string",
+                "description": "Only for this program (claude, codex, opencode, pi, gemini, aider...). Empty or \"any\": for every program."
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "blocked",
+                  "working"
+                ],
+                "description": "blocked: it waits for your answer. working: it is busy."
+              },
+              "any": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Regular expressions (any case): the rule matches when one of them matches the bottom rows of the screen."
+              },
+              "all": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Regular expressions (any case) that must all match."
+              },
+              "region": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 60,
+                "description": "How many of the last non-empty rows are read (default 12)."
+              },
+              "priority": {
+                "type": "integer",
+                "description": "Rules with a higher number are tried first (yours start at 1000)."
+              }
+            }
+          },
+          "markdownDescription": "Your own rules for telling what a program is doing from the bottom of the screen, tried before the built-in ones. `any` and `all` hold regular expressions. Example: `{ \"id\": \"my-bot\", \"state\": \"blocked\", \"any\": [\"waiting for the reviewer\"] }`."
+        },
+        "openconsole.scripts.maxParallel": {
+          "type": "number",
+          "default": 4,
+          "minimum": 0,
+          "maximum": 20,
+          "markdownDescription": "How many of the scripts that you chose in **Run package.json Scripts in Parallel** run at the same time; the next one starts when a running one ends. `0` starts them all at once (use it for servers that never end)."
+        },
+        "openconsole.worktree.startCommand": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "A command that is typed in the terminal of a new work tree (**New Terminal in a Fresh Git Worktree**), for example `claude`. Empty: only the shell starts."
+        },
+        "openconsole.web.publicUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "The address that your own tunnel gives to the sharing server, for example `https://abc.trycloudflare.com` (Cloudflare Quick Tunnel) or the `https://...ts.net` address of Tailscale Serve. Empty: the link works on this computer only. The server always listens on `127.0.0.1` only; a tunnel that you start (`cloudflared tunnel --url http://127.0.0.1:<port>`) carries it to the internet. Only this host is accepted besides the local ones."
+        },
+        "openconsole.web.maxClients": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 20,
+          "markdownDescription": "How many browsers can be connected at the same time."
+        },
+        "openconsole.web.sessionHours": {
+          "type": "number",
+          "default": 8,
+          "minimum": 1,
+          "maximum": 72,
+          "markdownDescription": "How long a paired browser stays paired. After that it has to pair again with a new link."
+        },
+        "openconsole.log.wrapLogMessage": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Put a line of dashes above and below every log that **Insert Log Message** makes."
+        },
+        "openconsole.log.logMessagePrefix": {
+          "type": "string",
+          "default": "▶",
+          "markdownDescription": "The first element of the message. Together with `#openconsole.log.delimiterInsideMessage#` it marks a log as made by OpenConsole: **Comment**, **Uncomment**, **Delete** and **Correct Log Messages** only touch logs that have both. Logs made before you change it are no longer found."
+        },
+        "openconsole.log.logMessageSuffix": {
+          "type": "string",
+          "default": ":",
+          "markdownDescription": "Put right after the variable in the message."
+        },
+        "openconsole.log.includeFilename": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Add the name of the file to the message."
+        },
+        "openconsole.log.includeLineNum": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Add the line number of the log line to the message. **Correct Log Messages** refreshes it after the code moved."
+        },
+        "openconsole.log.addSemicolonInTheEnd": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "End the JavaScript and TypeScript log with a semicolon (Python never gets one)."
+        },
+        "openconsole.log.insertEnclosingClass": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Add the name of the class that holds the variable to the message."
+        },
+        "openconsole.log.insertEnclosingFunction": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Add the name of the function or method that holds the variable to the message."
+        },
+        "openconsole.log.insertEmptyLineBeforeLogMessage": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Put an empty line above the log. **Delete Log Messages** removes an empty line next to a log only while this setting is on."
+        },
+        "openconsole.log.insertEmptyLineAfterLogMessage": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Put an empty line below the log. **Delete Log Messages** removes an empty line next to a log only while this setting is on."
+        },
+        "openconsole.log.delimiterInsideMessage": {
+          "type": "string",
+          "default": "›",
+          "markdownDescription": "Put, with a space on each side, between the elements of the message."
+        },
+        "openconsole.log.quote": {
+          "type": "string",
+          "enum": [
+            "\"",
+            "'",
+            "`"
+          ],
+          "default": "\"",
+          "markdownDescription": "The quote of the message. It changes by itself when the selected text has quotes."
+        },
+        "openconsole.log.logFunction": {
+          "type": "string",
+          "default": "log",
+          "markdownDescription": "The function that **Insert Custom Log Message** calls, for example `logger.debug`."
         }
       }
-    }
+    },
+    "keybindings": [
+      {
+        "command": "openconsole.log.insert",
+        "key": "ctrl+alt+l l",
+        "mac": "cmd+alt+l l",
+        "when": "editorTextFocus && !editorReadonly"
+      },
+      {
+        "command": "openconsole.log.info",
+        "key": "ctrl+alt+l i",
+        "mac": "cmd+alt+l i",
+        "when": "editorTextFocus && !editorReadonly"
+      },
+      {
+        "command": "openconsole.log.debug",
+        "key": "ctrl+alt+l d",
+        "mac": "cmd+alt+l d",
+        "when": "editorTextFocus && !editorReadonly"
+      },
+      {
+        "command": "openconsole.log.table",
+        "key": "ctrl+alt+l t",
+        "mac": "cmd+alt+l t",
+        "when": "editorTextFocus && !editorReadonly"
+      },
+      {
+        "command": "openconsole.log.warn",
+        "key": "ctrl+alt+l w",
+        "mac": "cmd+alt+l w",
+        "when": "editorTextFocus && !editorReadonly"
+      },
+      {
+        "command": "openconsole.log.error",
+        "key": "ctrl+alt+l e",
+        "mac": "cmd+alt+l e",
+        "when": "editorTextFocus && !editorReadonly"
+      },
+      {
+        "command": "openconsole.log.custom",
+        "key": "ctrl+alt+l m",
+        "mac": "cmd+alt+l m",
+        "when": "editorTextFocus && !editorReadonly"
+      },
+      {
+        "command": "openconsole.log.commentAll",
+        "key": "ctrl+alt+l c",
+        "mac": "cmd+alt+l c",
+        "when": "editorTextFocus && !editorReadonly"
+      },
+      {
+        "command": "openconsole.log.uncommentAll",
+        "key": "ctrl+alt+l u",
+        "mac": "cmd+alt+l u",
+        "when": "editorTextFocus && !editorReadonly"
+      },
+      {
+        "command": "openconsole.log.deleteAll",
+        "key": "ctrl+alt+l x",
+        "mac": "cmd+alt+l x",
+        "when": "editorTextFocus && !editorReadonly"
+      },
+      {
+        "command": "openconsole.log.correctAll",
+        "key": "ctrl+alt+l r",
+        "mac": "cmd+alt+l r",
+        "when": "editorTextFocus && !editorReadonly"
+      }
+    ]
   },
   "scripts": {
     "build": "node scripts/build.js",
     "build:native": "powershell -NoProfile -ExecutionPolicy Bypass -File native/build.ps1",
-    "test": "node --test --test-timeout=60000 test/layout.test.js test/session.test.js test/bridge.test.js",
+    "test": "node --test --test-timeout=60000 test/layout.test.js test/session.test.js test/bridge.test.js test/host.test.js test/agent.test.js test/attention.test.js test/filelinks.test.js test/launcher.test.js test/scripts.test.js test/worktrees.test.js test/webshare.test.js test/turbolog.test.js test/program-icons.test.js test/web-server.test.js test/web-remote.test.js test/profiles.test.js test/history.test.js test/suggest.test.js test/webview-multi.test.js test/animations.test.js test/rig.test.js test/rig-suggest.test.js",
     "package": "node scripts/build.js && vsce package --no-dependencies --allow-missing-repository"
   },
   "devDependencies": {
     "@vscode/vsce": "4.0.0",
     "@xterm/addon-fit": "0.11.0",
+    "@xterm/addon-search": "0.16.0",
     "@xterm/addon-unicode11": "0.9.0",
+    "@xterm/addon-web-links": "0.12.0",
     "@xterm/xterm": "6.0.0",
-    "bidi-js": "1.1.0"
+    "bidi-js": "1.1.0",
+    "material-icon-theme": "5.39.0"
   }
 }

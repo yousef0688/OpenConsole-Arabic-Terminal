@@ -1,0 +1,1292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OpenConsole webview test: several terminals</title>
+<!-- The real page of the extension (media/main.js + xterm.js), with a stand-in for the API of VS Code.
+     test/webview-multi.test.js opens it in headless Chrome and reads the result from #result.
+     Add #shot to the address to stop with two terminals on the screen (for a screenshot). -->
+<style>
+  :root {
+    --vscode-terminal-background: #181818; --vscode-panel-background: #181818; --vscode-terminal-foreground: #cccccc;
+    --vscode-foreground: #cccccc; --vscode-font-family: 'Segoe UI', sans-serif;
+    --vscode-list-inactiveSelectionBackground: #37373d; --vscode-list-hoverBackground: #2a2d2e; --vscode-panel-border: #80808059;
+  }
+  #result { display: none; }
+</style>
+<link rel="stylesheet" href="../media/vendor/xterm.css">
+<link rel="stylesheet" href="../media/main.css">
+</head>
+<body>
+<div id="app">
+<div id="terminals"></div>
+<div id="list" hidden></div>
+</div>
+<div id="message" hidden></div>
+<pre id="result"></pre>
+<script>
+  window.__sent = [];
+  window.acquireVsCodeApi = () => ({
+    postMessage: (m) => window.__sent.push(JSON.parse(JSON.stringify(m))),
+    getState: () => window.__state,
+    setState: (state) => { window.__state = JSON.parse(JSON.stringify(state)); },
+  });
+</script>
+<script src="../media/vendor/xterm.js"></script>
+<script src="../media/vendor/addon-fit.js"></script>
+<script src="../media/vendor/addon-unicode11.js"></script>
+<script src="../media/vendor/addon-web-links.js"></script>
+<script src="../media/vendor/addon-search.js"></script>
+<script src="../media/vendor/bidi.js"></script>
+<script src="../media/vendor/material-icons.js"></script>
+<script src="../media/custom-icons.js"></script>
+<script src="../media/program-icons.js"></script>
+<script src="../media/arabic-layout.js"></script>
+<script src="../media/row-patcher.js"></script>
+<script src="../media/image-chips.js"></script>
+<script src="../media/links.js"></script>
+<script src="../media/filelinks.js"></script>
+<script src="../media/find.js"></script>
+<script src="../media/agent-state.js"></script>
+<script src="../media/agent-rules.js"></script>
+<script src="../media/agent-view.js"></script>
+<script src="../media/suggest.js"></script>
+<script src="../media/main.js"></script>
+<script>
+  const post = (m) => window.dispatchEvent(new MessageEvent('message', { data: m }));
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const results = [];
+  const check = (name, condition, detail) => results.push({ name, ok: !!condition, detail: detail === undefined ? '' : String(detail) });
+  const sent = (type) => window.__sent.filter((m) => m.t === type);
+  const list = () => document.getElementById('list');
+  const items = () => Array.from(list().querySelectorAll('.item'));
+  const shown = () => Array.from(window.__openconsole.terminals.values()).filter((t) => t.el.classList.contains('active')).map((t) => t.id);
+  const text = (id) => {
+    const b = window.__openconsole.terminals.get(id).term.buffer.active;
+    const lines = [];
+    for (let i = 0; i < b.length; i++) {
+      const l = b.getLine(i);
+      if (!l) continue;
+      const next = b.getLine(i + 1);
+      const s = l.translateToString(!(next && next.isWrapped));         // a row that goes on in the next row keeps its spaces
+      if (l.isWrapped && lines.length) lines[lines.length - 1] += s; else lines.push(s);
+    }
+    return lines.join('\n');
+  };
+
+  // A pasted screenshot: its path goes to the shell as it is, and the terminal draws "[Image #n]" over the path.
+  // keep: leave the result on the screen (for a screenshot) instead of resetting the terminal at the end.
+  async function chipChecks(id, keep) {
+    const oc = window.__openconsole;
+    const t = oc.terminals.get(id);
+    const cols = t.term.cols;
+    const cellWidth = t.el.querySelector('.xterm-screen').offsetWidth / cols;
+    const decorations = () => Array.from(t.el.querySelectorAll('.xterm-decoration'));
+    const labels = () => decorations().map((d) => d.textContent);
+    const path1 = 'C:\\Users\\pc\\AppData\\Local\\Temp\\OpenConsole\\clipboard-20260930-123456-789.png';
+    const path2 = 'C:\\Users\\pc\\AppData\\Local\\Temp\\OpenConsole\\clipboard-20260930-123500-001.png';
+    post({ t: 'clear', id });
+    await sleep(100);
+    const before = sent('input').length;
+    post({ t: 'paste', id, text: path1, image: true });
+    await sleep(100);
+    check('a pasted screenshot: the real path goes to the program', sent('input').slice(before).some((m) => m.id === id && m.data.includes(path1)), JSON.stringify(sent('input').slice(before)));
+    post({ t: 'output', id, data: '> ' + path1 + '\r\n' });       // what the shell echoes (short enough not to wrap)
+    await sleep(300);
+    check('the path is drawn as [Image #1]', labels().length >= 1 && labels()[0] === '[Image #1]',
+      JSON.stringify(labels()) + ' | chips: items=' + JSON.stringify(t.chips.items) + ' current=' + t.chips.current.length + ' signature=' + t.chips.signature +
+      ' | cols=' + cols + ' | buffer type=' + t.term.buffer.active.type + ' | decoration nodes anywhere=' + document.querySelectorAll('.xterm-decoration').length +
+      ' | screen html=' + t.el.querySelector('.xterm-screen').innerHTML.replace(/<div class="xterm-rows"[\s\S]*?<\/div>\s*(?=<)/, '').slice(0, 300));
+    check('the label covers the whole path', decorations().length === 1 && decorations()[0].offsetWidth >= path1.length * cellWidth - 2, decorations().map((d) => d.offsetWidth) + ' vs ' + path1.length * cellWidth);
+    check('the terminal still holds the real path (copying gives it)', text(id).includes(path1));
+
+    // a path in quotes that wraps to the next row: the label on the first row, the rest is covered too
+    post({ t: 'paste', id, text: '"' + path2 + '"', image: true });
+    post({ t: 'output', id, data: 'PS C:\\Users\\pc> ' + 'x'.repeat(cols - 30 - 17) + '"' + path2 + '"\r\n' });
+    await sleep(300);
+    check('a wrapped path: the label on the first row, the second row covered', labels().join('|') === '[Image #1]|[Image #2]|', JSON.stringify(labels()));
+    post({ t: 'output', id, data: 'PS C:\\Users\\pc> echo \u0645\u0631\u062d\u0628\u0627 \u0628\u0643\r\n' });
+    await sleep(200);
+    check('other rows are not touched', labels().length === 3, JSON.stringify(labels()));
+    if (keep) return;
+
+    post({ t: 'reset', id });
+    await sleep(200);
+    check('reset removes the labels', decorations().length === 0, decorations().length);
+    post({ t: 'paste', id, text: path2, image: true });
+    post({ t: 'output', id, data: path2 + '\r\n' });
+    await sleep(300);
+    check('the numbering starts again after a reset', labels().join('|') === '[Image #1]', JSON.stringify(labels()));
+    post({ t: 'paste', id, text: 'a plain paste is not an image' });
+    post({ t: 'output', id, data: 'a plain paste is not an image\r\n' });
+    await sleep(200);
+    check('a plain paste gets no label', labels().join('|') === '[Image #1]', JSON.stringify(labels()));
+  }
+
+  // The suggestion of what you are going to type (grey text after the cursor, the Right Arrow types it), the commands that are
+  // reported when Enter is pressed, and the keys of the menu of the view (scroll to a command, recent directory, recent command).
+  async function suggestChecks(id) {
+    const oc = window.__openconsole;
+    const t = oc.terminals.get(id);
+    const ghosts = () => Array.from(t.el.querySelectorAll('.xterm-decoration')).map((d) => d.textContent).filter(Boolean);
+    const press = (init) => {
+      const before = sent('input').length;
+      t.term.textarea.dispatchEvent(new KeyboardEvent('keydown', Object.assign({ bubbles: true, cancelable: true }, init)));
+      return sent('input').slice(before).filter((m) => m.id === id).map((m) => m.data);
+    };
+    const prompt = 'PS C:\\Users\\pc\\My Projects> ';
+    post({ t: 'reset', id });
+    post({ t: 'history', replace: true, commands: ['git status', 'echo hello world', 'echo hello there', 'dir'] });
+    post({ t: 'output', id, data: prompt + 'echo he' });
+    await sleep(300);
+    check('suggestion: the rest of the newest matching command is shown in grey', ghosts().join('|') === 'llo there', JSON.stringify(ghosts()));
+    const ghost = t.el.querySelector('.xterm-decoration');
+    const ghostColor = ghost ? getComputedStyle(ghost).color : '';
+    check('suggestion: it is drawn at the cursor, in the grey of the theme, and does not take the mouse', ghost && ghost.getBoundingClientRect().width > 50 && ghostColor !== getComputedStyle(t.el.querySelector('.xterm-rows')).color && getComputedStyle(ghost).pointerEvents === 'none', ghostColor);
+
+    post({ t: 'busy', id, busy: true });
+    await sleep(150);
+    check('suggestion: hidden while another program runs', ghosts().length === 0, JSON.stringify(ghosts()));
+    post({ t: 'busy', id, busy: false });
+    await sleep(150);
+    check('suggestion: and back when the shell is at its prompt again', ghosts().join('|') === 'llo there', JSON.stringify(ghosts()));
+
+    post({ t: 'output', id, data: '\u001b[D' });                     // the cursor moves left: there is text after it
+    await sleep(150);
+    check('suggestion: hidden when there is text after the cursor', ghosts().length === 0, JSON.stringify(ghosts()));
+    post({ t: 'output', id, data: '\u001b[C' });
+    await sleep(150);
+    check('suggestion: and back with the cursor at the end', ghosts().join('|') === 'llo there', JSON.stringify(ghosts()));
+
+    post({ t: 'output', id, data: '\u001b[?1049h' });                // vim and the like: the alternate screen
+    await sleep(150);
+    check('suggestion: not on the alternate screen', ghosts().length === 0, JSON.stringify(ghosts()));
+    post({ t: 'output', id, data: '\u001b[?1049l' });
+    await sleep(150);
+    check('suggestion: and back when the program ends', ghosts().join('|') === 'llo there', JSON.stringify(ghosts()));
+
+    post({ t: 'output', id, data: 'llo w' });                        // typing on: the suggestion follows
+    await sleep(150);
+    check('suggestion: it follows what you type', ghosts().join('|') === 'orld', JSON.stringify(ghosts()));
+    post({ t: 'output', id, data: '\b\b\b\b\b\u001b[K' });          // five letters erased: the newest command with "echo he" again
+    await sleep(150);
+    check('suggestion: and after a correction', ghosts().join('|') === 'llo there', JSON.stringify(ghosts()));
+
+    const arrow = press({ key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 });
+    check('suggestion: the Right Arrow types the rest of it', JSON.stringify(arrow) === JSON.stringify(['llo there']), JSON.stringify(arrow));
+    check('suggestion: and it is gone at once', ghosts().length === 0, JSON.stringify(ghosts()));
+    check('suggestion: a second Right Arrow is a normal key', JSON.stringify(press({ key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 })) === JSON.stringify(['\u001b[C']));
+    check('suggestion: Ctrl+Right Arrow is not taken', (post({ t: 'output', id, data: '\u001b[D' }), true) && JSON.stringify(press({ key: 'ArrowRight', code: 'ArrowRight', keyCode: 39, ctrlKey: true })) === JSON.stringify(['\u001b[1;5C']));
+
+    // what the shell shows after the Right Arrow, then Enter: the command goes to the extension with the folder of the prompt
+    post({ t: 'output', id, data: '\u001b[C' });
+    post({ t: 'output', id, data: 'llo there' });
+    await sleep(150);
+    check('suggestion: nothing more to suggest for a complete command', ghosts().length === 0, JSON.stringify(ghosts()));
+    const commandsBefore = sent('command').length;
+    t.term.input('\r', true);
+    const commands = sent('command').slice(commandsBefore);
+    check('Enter reports the command and the folder of the prompt', commands.length === 1 && commands[0].id === id && commands[0].text === 'echo hello there' && commands[0].directory === 'C:\\Users\\pc\\My Projects', JSON.stringify(commands));
+    check('and the input still goes to the shell', sent('input').some((m) => m.id === id && m.data === '\r'));
+
+    // a program that runs in the terminal: what is typed there is not a command of the shell
+    post({ t: 'busy', id, busy: true });
+    const busyBefore = sent('command').length;
+    t.term.input('\r', true);
+    check('Enter reports nothing while another program runs', sent('command').length === busyBefore);
+    post({ t: 'busy', id, busy: false });
+
+    // the setting turns it all off
+    const cfg = { fontFamily: 'Consolas, monospace', fontSize: 14, lineHeight: 1, cursorStyle: 'bar', textFont: 'Segoe UI', shellName: 'powershell', windowsBuildNumber: 22621 };
+    post({ t: 'config', config: Object.assign({ suggestions: false }, cfg) });
+    post({ t: 'output', id, data: '\r\n' + prompt + 'echo he' });
+    await sleep(250);
+    check('openconsole.suggestions off: no suggestion', ghosts().length === 0, JSON.stringify(ghosts()));
+    const offBefore = sent('command').length;
+    t.term.input('\r', true);
+    check('openconsole.suggestions off: nothing is reported or remembered', sent('command').length === offBefore);
+    check('openconsole.suggestions off: the Right Arrow is a normal key', JSON.stringify(press({ key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 })) === JSON.stringify(['\u001b[C']));
+    post({ t: 'config', config: Object.assign({ suggestions: true }, cfg) });
+    post({ t: 'output', id, data: '\b\b' });
+    post({ t: 'output', id, data: 'he' });
+    await sleep(250);
+    check('openconsole.suggestions on again: the suggestion is back', ghosts().length === 1, JSON.stringify(ghosts()));
+
+    // Arabic: a word that is typed is laid out from the right, so its continuation would be on the wrong side of the cursor
+    post({ t: 'reset', id });
+    post({ t: 'history', replace: true, commands: ['echo "مرحبا بالعالم" hello world'] });
+    post({ t: 'output', id, data: prompt + 'echo "مر' });
+    await sleep(300);
+    check('suggestion: not shown in the middle of an Arabic word', ghosts().length === 0, JSON.stringify(ghosts()));
+    check('suggestion: and the Right Arrow is then a normal key', JSON.stringify(press({ key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 })) === JSON.stringify(['\u001b[C']));
+    post({ t: 'reset', id });
+    post({ t: 'output', id, data: prompt + 'echo "مرحبا بالعالم" he' });
+    await sleep(300);
+    check('suggestion: shown again when English follows the Arabic', ghosts().join('|') === 'llo world', JSON.stringify(ghosts()));
+
+    // scroll to the previous / next command
+    post({ t: 'reset', id });
+    await sleep(100);
+    const rows = t.term.rows;
+    for (let n = 1; n <= 5; n++) {
+      post({ t: 'output', id, data: prompt + 'cmd ' + n });
+      await sleep(60);
+      t.term.input('\r', true);
+      post({ t: 'output', id, data: '\r\n' + Array.from({ length: rows + 4 }, (_, i) => 'output ' + n + '.' + i).join('\r\n') + '\r\n' });
+      await sleep(120);
+    }
+    const buffer = () => t.term.buffer.active;
+    const topText = () => buffer().getLine(buffer().viewportY).translateToString(true);
+    check('commands: the screen is at the bottom after a lot of output', buffer().viewportY === buffer().baseY && buffer().baseY > 0, buffer().viewportY + '/' + buffer().baseY);
+    post({ t: 'scrollCommand', id, dir: -1 });
+    await sleep(100);
+    check('commands: "previous command" puts the last command on the top row', topText().includes('cmd 5'), JSON.stringify(topText()));
+    press({ key: 'ArrowUp', code: 'ArrowUp', keyCode: 38, ctrlKey: true });
+    await sleep(100);
+    check('commands: Ctrl+Up Arrow goes to the one before', topText().includes('cmd 4'), JSON.stringify(topText()));
+    check('commands: Ctrl+Up Arrow is not sent to the shell', !sent('input').some((m) => m.data === '\u001b[1;5A'));
+    press({ key: 'ArrowUp', code: 'ArrowUp', keyCode: 38, ctrlKey: true });
+    press({ key: 'ArrowUp', code: 'ArrowUp', keyCode: 38, ctrlKey: true });
+    press({ key: 'ArrowUp', code: 'ArrowUp', keyCode: 38, ctrlKey: true });
+    press({ key: 'ArrowUp', code: 'ArrowUp', keyCode: 38, ctrlKey: true });
+    await sleep(100);
+    check('commands: at the first command it stays there', topText().includes('cmd 1'), JSON.stringify(topText()));
+    press({ key: 'ArrowDown', code: 'ArrowDown', keyCode: 40, ctrlKey: true });
+    await sleep(100);
+    check('commands: Ctrl+Down Arrow goes forward', topText().includes('cmd 2'), JSON.stringify(topText()));
+    post({ t: 'scrollCommand', id, dir: 1 });
+    await sleep(100);
+    check('commands: "next command" from the menu too', topText().includes('cmd 3'), JSON.stringify(topText()));
+
+    // the keys of "Go to Recent Directory" and "Run Recent Command"
+    const actionsBefore = sent('action').length;
+    const keyG = press({ key: 'g', code: 'KeyG', keyCode: 71, ctrlKey: true });
+    const keyGArabic = press({ key: '\u0639', code: '', keyCode: 71, ctrlKey: true });
+    const keyR = press({ key: 'r', code: 'KeyR', keyCode: 82, ctrlKey: true, altKey: true });
+    const actions = sent('action').slice(actionsBefore);
+    check('Ctrl+G asks for the recent directories, also without a scan code', actions.length === 3 && actions[0].action === 'recentDirectory' && actions[1].action === 'recentDirectory' && actions[0].id === id, JSON.stringify(actions));
+    check('Ctrl+Alt+R asks for the recent commands', actions[2] && actions[2].action === 'recentCommand', JSON.stringify(actions));
+    check('these keys are not sent to the shell', keyG.length === 0 && keyGArabic.length === 0 && keyR.length === 0, JSON.stringify([keyG, keyGArabic, keyR]));
+    check('Ctrl+R alone still goes to the shell (search in the history)', JSON.stringify(press({ key: 'r', code: 'KeyR', keyCode: 82, ctrlKey: true })) === JSON.stringify(['\u0012']));
+    post({ t: 'reset', id });
+    await sleep(100);
+    check('reset forgets the marks of the commands', t.marks.every((m) => m.isDisposed) || t.marks.length === 0, t.marks.length);
+  }
+
+  // The menu next to "+": a dropdown that the page draws (entries from the extension), keys and mouse, a pick goes back as menuPick.
+  async function menuChecks(id) {
+    const oc = window.__openconsole;
+    const menu = document.getElementById('menu');
+    const entries = () => Array.from(menu.querySelectorAll('.entry')).map((e) => e.textContent);
+    const selected = () => (menu.querySelector('.entry.selected') || {}).textContent;
+    const items = [{ id: 'new', label: 'New Terminal' }, { id: 'editor', label: 'New Terminal in Editor' }, { id: 'split', label: 'Split Terminal' }, { separator: true },
+      { id: 'profile:0', label: 'PowerShell' }, { id: 'profile:1', label: 'Command Prompt' }, { separator: true }, { id: 'default', label: 'Select Default Profile' }];
+    const key = (k) => menu.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+    const picks = () => sent('menuPick').map((m) => m.id);
+    const before = sent('menuPick').length;
+
+    check('menu: hidden until the extension sends it', menu.hidden);
+    post({ t: 'menu', items });
+    await sleep(80);
+    check('menu: shown with its entries and the separators', !menu.hidden && JSON.stringify(entries()) === JSON.stringify(['New Terminal', 'New Terminal in Editor', 'Split Terminal', 'PowerShell', 'Command Prompt', 'Select Default Profile']) && menu.querySelectorAll('.separator').length === 2, JSON.stringify(entries()));
+    const box = menu.getBoundingClientRect();
+    check('menu: at the top right of the page, inside it', box.top <= 2 && box.right <= window.innerWidth && box.right >= window.innerWidth - 16 && box.width >= 200, JSON.stringify([box.top, box.right, box.width, window.innerWidth]));
+    check('menu: it has the keyboard focus and the first entry is marked', document.activeElement === menu && selected() === 'New Terminal');
+    const opening = getComputedStyle(menu);
+    check('menu: it opens smoothly (an animation of a moment)', opening.animationName === 'oc-menu-open' && parseFloat(opening.animationDuration) > 0.05 && parseFloat(opening.animationDuration) < 0.4, opening.animationName + ' ' + opening.animationDuration);
+    const alphaOf = (color) => { const m = /(?:rgba\([^)]*,\s*([0-9.]+)\)|\/\s*([0-9.]+)\s*\))/.exec(color); return m ? parseFloat(m[1] || m[2]) : 1; };
+    const veil = getComputedStyle(menu.querySelector('.entry.selected')).backgroundColor;
+    check('menu: the marked entry is a see-through veil, not a solid blue square', alphaOf(veil) > 0.05 && alphaOf(veil) < 0.5, veil);
+    check('menu: and its text keeps its colour (not turned white)', getComputedStyle(menu.querySelector('.entry.selected')).color === getComputedStyle(menu.querySelectorAll('.entry')[3]).color);
+    await sleep(500);
+    const settled = getComputedStyle(menu);
+    check('menu: when it has opened it is whole: opaque and in its place', settled.opacity === '1' && (settled.transform === 'none' || settled.transform === 'matrix(1, 0, 0, 1, 0, 0)'), settled.opacity + ' ' + settled.transform);
+    key('ArrowDown'); key('ArrowDown');
+    check('menu: the arrow keys move the mark', selected() === 'Split Terminal', selected());
+    key('ArrowUp'); key('ArrowUp'); key('ArrowUp');
+    check('menu: and wrap around', selected() === 'Select Default Profile', selected());
+    key('Home');
+    check('menu: Home goes to the first entry', selected() === 'New Terminal');
+    key('End');
+    check('menu: End goes to the last entry', selected() === 'Select Default Profile');
+    menu.querySelectorAll('.entry')[4].dispatchEvent(new MouseEvent('mouseenter'));
+    check('menu: pointing at an entry marks it', selected() === 'Command Prompt', selected());
+
+    key('Escape');
+    await sleep(50);
+    check('menu: Escape closes it and nothing was picked', menu.hidden && sent('menuPick').length === before);
+    check('menu: the keyboard goes back to the terminal', document.activeElement === oc.terminals.get(id).term.textarea || oc.terminals.get(id).el.contains(document.activeElement));
+
+    post({ t: 'menu', items });
+    await sleep(80);
+    key('ArrowDown'); key('ArrowDown'); key('Enter');
+    check('menu: Enter picks the marked entry, once', JSON.stringify(picks().slice(before)) === JSON.stringify(['split']) && menu.hidden, JSON.stringify(picks().slice(before)));
+
+    post({ t: 'menu', items });
+    await sleep(80);
+    menu.querySelectorAll('.entry')[4].click();
+    check('menu: a click picks that entry (the profile) and closes the menu', JSON.stringify(picks().slice(before)) === JSON.stringify(['split', 'profile:1']) && menu.hidden, JSON.stringify(picks().slice(before)));
+
+    post({ t: 'menu', items });
+    await sleep(80);
+    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    check('menu: a click somewhere else closes it without a pick', menu.hidden && sent('menuPick').length === before + 2);
+
+    post({ t: 'menu', items: [{ separator: true }] });
+    post({ t: 'menu', items: 'not a list' });
+    check('menu: nothing to show, nothing shown', menu.hidden);
+    post({ t: 'menu', items });
+    await sleep(80);
+    post({ t: 'new' });
+    await sleep(300);
+    check('menu: a new terminal closes it', menu.hidden);
+  }
+
+  // Links: an address in the output is underlined with a hint when it is pointed at, and Ctrl + click sends it to the extension.
+  async function linkChecks(id) {
+    const oc = window.__openconsole;
+    const t = oc.terminals.get(id);
+    const tip = document.getElementById('linktip');
+    const opened = () => sent('openLink').map((m) => m.uri);
+    const geometry = () => { const r = t.el.querySelector('.xterm-screen').getBoundingClientRect(); return { left: r.left, top: r.top, cw: r.width / t.term.cols, ch: r.height / t.term.rows }; };
+    // the position of text in the buffer: { row, col } of the first character of "needle" (in the visible rows)
+    const find = (needle) => {
+      const b = t.term.buffer.active;
+      for (let y = 0; y < t.term.rows; y++) { const line = b.getLine(b.viewportY + y); if (!line) continue; const i = line.translateToString(true).indexOf(needle); if (i >= 0) return { row: y, col: i }; }
+      return null;
+    };
+    const fire = (type, cell, extra) => {
+      const g = geometry();
+      const init = Object.assign({ bubbles: true, cancelable: true, button: 0, clientX: g.left + (cell.col + 0.5) * g.cw, clientY: g.top + (cell.row + 0.5) * g.ch }, extra);
+      t.el.querySelector('.xterm-screen').dispatchEvent(new MouseEvent(type, init));
+    };
+    // xterm.js asks for the addresses of a row when the pointer comes to it (not while it stays on the same row), so the pointer
+    // comes from another row, as it does in real use
+    const hover = async (cell, extra) => {
+      fire('mousemove', { row: (cell.row + 4) % t.term.rows, col: 0 }, extra); await sleep(40);
+      fire('mousemove', cell, extra); await sleep(150);
+    };
+    const click = async (cell, extra) => {
+      await hover(cell, extra);
+      fire('mousedown', cell, extra); fire('mouseup', cell, extra); fire('click', cell, extra);
+      await sleep(80);
+    };
+    const url = 'https://example.com/docs/page?x=1&y=2';
+
+    post({ t: 'reset', id });
+    await sleep(120);
+    post({ t: 'output', id, data: 'see ' + url + ' now\r\nplain text, no address here\r\n' });
+    await sleep(250);
+    const link = find('https://');
+    const before = opened().length;
+    check('links: the page loaded the web links addon and the address is on the screen', typeof WebLinksAddon === 'object' && !!link, JSON.stringify(link));
+    await hover({ row: link.row, col: link.col + 6 });
+    check('links: pointed at an address, a hint comes up (Follow link, Ctrl + click)', !tip.hidden && tip.textContent.includes('Ctrl + click'), tip.hidden + ' ' + tip.textContent);
+    check('links: the address is underlined while it is pointed at', /underline/.test(t.el.querySelector('.xterm-rows').innerHTML), t.el.querySelector('.xterm-rows').innerHTML.slice(0, 200));
+    fire('mousemove', { row: link.row + 1, col: 2 });
+    await sleep(150);
+    check('links: and the hint goes away when the mouse leaves it', tip.hidden);
+
+    await click({ row: link.row, col: link.col + 6 });
+    check('links: a click without Ctrl only selects: nothing is opened', opened().length === before, JSON.stringify(opened()));
+    await click({ row: link.row, col: link.col + 6 }, { ctrlKey: true });
+    check('links: Ctrl + click opens the address, all of it', JSON.stringify(opened().slice(before)) === JSON.stringify([url]), JSON.stringify(opened().slice(before)));
+    await click({ row: link.row, col: 1 }, { ctrlKey: true });
+    check('links: Ctrl + click on other text of the same row does nothing', opened().length === before + 1, JSON.stringify(opened()));
+    await click({ row: link.row + 1, col: 4 }, { ctrlKey: true });
+    check('links: nor on a row without an address', opened().length === before + 1);
+    await click({ row: link.row, col: link.col + 6 }, { ctrlKey: true, button: 2 });
+    check('links: nor with the right button', opened().length === before + 1);
+
+    // an address that is longer than the row goes on in the next one: it is still one address
+    const cols = t.term.cols;
+    const longUrl = 'https://example.com/' + 'a'.repeat(cols + 12) + '/end';
+    post({ t: 'reset', id });
+    await sleep(120);
+    post({ t: 'output', id, data: longUrl + '\r\n' });
+    await sleep(250);
+    const second = find('end');
+    await click({ row: second.row, col: second.col }, { ctrlKey: true });
+    check('links: an address that wraps onto the next row opens whole', opened()[opened().length - 1] === longUrl, opened()[opened().length - 1]);
+
+    // the punctuation after an address is not a part of it
+    post({ t: 'reset', id });
+    await sleep(120);
+    post({ t: 'output', id, data: 'visit https://example.com/page. and (https://example.org/x), ok\r\n' });
+    await sleep(250);
+    const one = find('https://example.com');
+    await click({ row: one.row, col: one.col + 4 }, { ctrlKey: true });
+    const two = find('https://example.org');
+    await click({ row: two.row, col: two.col + 4 }, { ctrlKey: true });
+    check('links: a full stop or a bracket after an address is not opened with it', JSON.stringify(opened().slice(-2)) === JSON.stringify(['https://example.com/page', 'https://example.org/x']), JSON.stringify(opened().slice(-2)));
+
+    // a row with Arabic in it (laid out by the page) still has working links
+    post({ t: 'reset', id });
+    await sleep(120);
+    post({ t: 'output', id, data: 'مرحبا بالعالم https://example.net/ar ok\r\n' });
+    await sleep(350);
+    const arabic = find('https://');
+    await click({ row: arabic.row, col: arabic.col + 5 }, { ctrlKey: true });
+    check('links: an address in a row with Arabic text opens too', opened()[opened().length - 1] === 'https://example.net/ar', opened()[opened().length - 1]);
+
+    // a program that asks for the mouse (vim, pi, opencode) gets the clicks: xterm.js leaves the addresses alone, the page finds them itself
+    post({ t: 'reset', id });
+    await sleep(120);
+    post({ t: 'output', id, data: '\u001b[?1000h\u001b[?1006hsee https://example.com/mouse here\r\nsecond row\r\n' });
+    await sleep(250);
+    const mouse = find('https://');
+    check('links: (the program has asked for the mouse)', t.term.modes.mouseTrackingMode !== 'none', t.term.modes.mouseTrackingMode);
+    await hover({ row: mouse.row, col: mouse.col + 5 });
+    check('links: pointed at an address while a program uses the mouse, the hint comes up too', !tip.hidden);
+    await hover({ row: mouse.row + 1, col: 2 });
+    check('links: and it goes away on other text', tip.hidden);
+    const openedBefore = opened().length;
+    const inputsBefore = sent('input').length;
+    await click({ row: mouse.row, col: mouse.col + 5 }, { ctrlKey: true });
+    check('links: Ctrl + click opens the address', opened().length === openedBefore + 1 && opened()[opened().length - 1] === 'https://example.com/mouse', JSON.stringify(opened().slice(-2)));
+    check('links: the program does not get that click', !sent('input').slice(inputsBefore).some((m) => /\u001b\[<\d+;\d+;\d+[Mm]/.test(m.data)), JSON.stringify(sent('input').slice(inputsBefore)));
+    const mark = sent('input').length;
+    await click({ row: mouse.row, col: mouse.col + 5 });
+    check('links: a click without Ctrl goes to the program, as before', opened().length === openedBefore + 1 && sent('input').slice(mark).some((m) => /\u001b\[<0;/.test(m.data)), JSON.stringify(sent('input').slice(mark)));
+    const mark2 = sent('input').length;
+    await click({ row: mouse.row + 1, col: 2 }, { ctrlKey: true });
+    check('links: Ctrl + click away from an address goes to the program', opened().length === openedBefore + 1 && sent('input').slice(mark2).some((m) => /\u001b\[<16;/.test(m.data)), JSON.stringify(sent('input').slice(mark2)));
+    post({ t: 'output', id, data: '\u001b[?1000l\u001b[?1006l' });
+    await sleep(100);
+    check('links: the program lets go of the mouse', t.term.modes.mouseTrackingMode === 'none');
+    post({ t: 'reset', id });
+    await sleep(100);
+  }
+
+  // The right mouse button pastes what was copied last: the page asks the extension for the clipboard (a webview cannot read it
+  // itself) and the text comes back as a paste message. A program that uses the mouse gets the right button; Shift pastes then.
+  async function rightClickChecks(id) {
+    const oc = window.__openconsole;
+    const t = oc.terminals.get(id);
+    const screen = t.el.querySelector('.xterm-screen');
+    const requests = () => sent('pasteRequest').filter((m) => m.id === id).length;
+    const contextMenu = (init) => { const e = new MouseEvent('contextmenu', Object.assign({ bubbles: true, cancelable: true, button: 2, clientX: 40, clientY: 40 }, init)); screen.dispatchEvent(e); return e.defaultPrevented; };
+    const baseConfig = { fontFamily: 'Consolas, monospace', fontSize: 14, lineHeight: 1, cursorStyle: 'bar', textFont: 'Segoe UI', shellName: 'powershell', windowsBuildNumber: 22621 };
+
+    post({ t: 'reset', id });
+    await sleep(100);
+    let before = requests();
+    const prevented = contextMenu();
+    check('right button: the page asks the extension for the clipboard', requests() === before + 1, requests() - before);
+    check('right button: and the menu of VS Code does not open', prevented);
+
+    before = requests();
+    check('right button: the key for the menu is not a paste, but the menu stays shut', contextMenu({ button: 0 }) === true && requests() === before);
+
+    const inputs = sent('input').length;
+    post({ t: 'paste', id, text: 'echo pasted from the clipboard' });
+    check('right button: the text that comes back is typed into the terminal', sent('input').slice(inputs).some((m) => m.id === id && m.data.includes('echo pasted from the clipboard')), JSON.stringify(sent('input').slice(inputs)));
+
+    const imagesBefore = sent('pasteImage').length;
+    const inputsEmpty = sent('input').length;
+    post({ t: 'pasteEmpty', id });
+    await sleep(150);
+    check('right button: nothing in the clipboard: nothing is typed (a screenshot is tried, and may not be readable)', sent('input').length === inputsEmpty && sent('pasteImage').length === imagesBefore);
+
+    // a program that uses the mouse
+    post({ t: 'output', id, data: '\u001b[?1000h\u001b[?1006h' });
+    await sleep(100);
+    before = requests();
+    contextMenu();
+    check('right button: while a program uses the mouse it gets the right button: no paste', requests() === before);
+    contextMenu({ shiftKey: true });
+    check('right button: Shift + right button pastes then', requests() === before + 1);
+    post({ t: 'output', id, data: '\u001b[?1000l\u001b[?1006l' });
+    await sleep(100);
+
+    // a process that ended
+    post({ t: 'exit', id, code: 0 });
+    await sleep(100);
+    before = requests();
+    contextMenu();
+    check('right button: a terminal whose process ended does not paste', requests() === before);
+    post({ t: 'reset', id });
+    await sleep(100);
+
+    // the setting
+    post({ t: 'config', config: Object.assign({ rightClickPaste: false }, baseConfig) });
+    await sleep(100);
+    before = requests();
+    check('openconsole.rightClickPaste off: the menu of VS Code is left alone', contextMenu() === false && requests() === before);
+    post({ t: 'config', config: Object.assign({ rightClickPaste: true }, baseConfig) });
+    await sleep(100);
+    before = requests();
+    contextMenu();
+    check('openconsole.rightClickPaste on again: it pastes', requests() === before + 1);
+  }
+
+  // Backspace and Delete treat the label "[Image #n]" as one character: right behind it (or in front of it) they remove the whole path at once.
+  async function chipDeleteChecks(id) {
+    const oc = window.__openconsole;
+    const t = oc.terminals.get(id);
+    const press = (init) => {
+      const before = sent('input').length;
+      t.term.textarea.dispatchEvent(new KeyboardEvent('keydown', Object.assign({ bubbles: true, cancelable: true }, init)));
+      return sent('input').slice(before).filter((m) => m.id === id).map((m) => m.data);
+    };
+    const backspace = (extra) => press(Object.assign({ key: 'Backspace', code: 'Backspace', keyCode: 8 }, extra));
+    const del = () => press({ key: 'Delete', code: 'Delete', keyCode: 46 });
+    // short paths for the main scenarios (the terminal of this test is not very wide, and a line that wraps by accident is another test)
+    const path1 = 'C:\\Temp\\OpenConsole\\clip-1.png';
+    const path3 = 'C:\\Temp\\OpenConsole\\clip-3.png';
+    const long = 'C:\\Users\\pc\\AppData\\Local\\Temp\\OpenConsole\\clipboard-20260930-123456-789.png';
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const DEL = '\u007f';
+
+    // the cursor right behind the label
+    post({ t: 'reset', id });
+    await sleep(100);
+    post({ t: 'paste', id, text: path1, image: true });
+    post({ t: 'output', id, data: 'PS C:\\> ' + path1 });
+    await sleep(300);
+    const whole = backspace();
+    check('chip delete: Backspace right behind the label removes the whole path at once', same(whole, [DEL.repeat(path1.length)]), JSON.stringify(whole.map((d) => d.length)));
+    check('chip delete: and it is one message, not one for every letter', whole.length === 1);
+
+    // not next to the label: a normal Backspace
+    post({ t: 'output', id, data: ' more' });
+    await sleep(100);
+    check('chip delete: after other text Backspace is a normal key', same(backspace(), [DEL]));
+    for (let n = 0; n < 5; n++) post({ t: 'output', id, data: '\b \b' });
+    await sleep(300);
+    check('chip delete: and when that text is gone, the label is behind the cursor again', same(backspace(), [DEL.repeat(path1.length)]));
+    check('chip delete: Ctrl and Shift change nothing: they are not Backspace alone', !backspace({ ctrlKey: true }).some((d) => d.length > 1) && !backspace({ shiftKey: true }).some((d) => d.length > 1));
+
+    // the cursor right in front of the label: Delete
+    post({ t: 'output', id, data: '\u001b[' + path1.length + 'D' });
+    await sleep(300);
+    const forward = del();
+    check('chip delete: Delete right in front of the label removes the whole path at once', same(forward, ['\u001b[3~'.repeat(path1.length)]), JSON.stringify(forward.map((d) => d.length)));
+    check('chip delete: there Backspace is a normal key', same(backspace(), [DEL]));
+    post({ t: 'output', id, data: '\u001b[C' });
+    await sleep(100);
+    check('chip delete: inside the path Delete is a normal key', same(del(), ['\u001b[3~']));
+
+    // a path with quotes (it has spaces): the quotes count
+    const path2 = 'C:\\Users\\Ali Hassan\\Temp\\clip-2.png';
+    post({ t: 'reset', id });
+    await sleep(100);
+    post({ t: 'paste', id, text: '"' + path2 + '"', image: true });
+    post({ t: 'output', id, data: 'PS> "' + path2 + '"' });
+    await sleep(300);
+    check('chip delete: the quotes around the path go with it', same(backspace(), [DEL.repeat(path2.length + 2)]));
+
+    // a path that wraps onto the next row is one path
+    const cols = t.term.cols;
+    post({ t: 'reset', id });
+    await sleep(100);
+    post({ t: 'paste', id, text: long, image: true });
+    post({ t: 'output', id, data: 'PS> ' + 'x'.repeat(cols - 30) + long });
+    await sleep(300);
+    check('chip delete: a path that wraps onto the next row is removed whole', same(backspace(), [DEL.repeat(long.length)]));
+
+    // two screenshots one after the other: one by one
+    post({ t: 'reset', id });
+    await sleep(100);
+    post({ t: 'paste', id, text: path1, image: true });
+    post({ t: 'paste', id, text: path3, image: true });
+    post({ t: 'output', id, data: 'PS> ' + path1 + ' ' + path3 });
+    await sleep(300);
+    check('chip delete: with two screenshots the one behind the cursor goes first', same(backspace(), [DEL.repeat(path3.length)]));
+    post({ t: 'output', id, data: '\u001b[' + path3.length + 'D' });
+    await sleep(300);
+    check('chip delete: and the space between them is a normal Backspace', same(backspace(), [DEL]));
+
+    // the alternate screen (vim and the like) and a terminal without screenshots: nothing special
+    post({ t: 'output', id, data: '\u001b[?1049h' + 'text ' + path1 });
+    await sleep(300);
+    check('chip delete: on the alternate screen Backspace is a normal key', same(backspace(), [DEL]));
+    post({ t: 'output', id, data: '\u001b[?1049l' });
+    post({ t: 'reset', id });
+    await sleep(100);
+    post({ t: 'output', id, data: 'PS> ' + path1 });
+    await sleep(300);
+    check('chip delete: after a reset there are no screenshots to remove: Backspace is a normal key', same(backspace(), [DEL]));
+    post({ t: 'reset', id });
+    await sleep(100);
+  }
+
+  // Find in the terminal (Ctrl+F): a widget with a field, three options, a counter, previous / next and close.
+  async function findChecks(id) {
+    const oc = window.__openconsole;
+    const t = oc.terminals.get(id);
+    const widget = document.getElementById('find');
+    const input = widget.querySelector('input');
+    const count = widget.querySelector('.count');
+    const press = (init, target) => {
+      const before = sent('input').length;
+      (target || t.term.textarea).dispatchEvent(new KeyboardEvent('keydown', Object.assign({ bubbles: true, cancelable: true }, init)));
+      return sent('input').slice(before).filter((m) => m.id === id).map((m) => m.data);
+    };
+    const type = async (text) => { input.value = text; input.dispatchEvent(new Event('input', { bubbles: true })); await sleep(300); };
+    const index = () => { const m = /^(\d+|\?) of (\d+)\+?$/.exec(count.textContent); return m ? { at: m[1] === '?' ? NaN : parseInt(m[1], 10), of: parseInt(m[2], 10) } : null; };
+    const click = async (selector) => { widget.querySelector(selector).click(); await sleep(300); };
+
+    // 37 matches of "alpha" without regard to capitals, 34 with them, 33 as a whole word, 30 of the expression
+    const rows = [];
+    for (let i = 1; i <= 30; i++) rows.push('row ' + i + ' alpha' + (i % 10 === 0 ? ' ALPHA' : '') + (i % 7 === 0 ? ' alphabet' : ''));
+    post({ t: 'reset', id });
+    await sleep(100);
+    post({ t: 'output', id, data: rows.join('\r\n') + '\r\n' });
+    await sleep(400);
+
+    check('find: hidden until it is asked for', widget.hidden);
+    const inputsBefore = sent('input').length;
+    const swallowed = press({ key: 'f', code: 'KeyF', keyCode: 70, ctrlKey: true });
+    await sleep(100);
+    check('find: Ctrl+F opens it, and the key is not sent to the shell', !widget.hidden && swallowed.length === 0 && sent('input').length === inputsBefore, JSON.stringify(swallowed));
+    check('find: the cursor is in its field', document.activeElement === input);
+    const box = widget.getBoundingClientRect();
+    const area = document.getElementById('terminals').getBoundingClientRect();
+    check('find: it sits at the top right of the terminals, inside them', box.top >= area.top && box.right <= area.right && area.right - box.right < 40 && box.top - area.top < 20, JSON.stringify([box.top, box.right, area.top, area.right]));
+
+    await type('alpha');
+    let state = index();
+    check('find: typing finds every match in the whole buffer, also what scrolled off', state && state.of === 37, count.textContent);
+    check('find: a highlight is drawn over the matches that are on the screen', t.el.querySelectorAll('.xterm-decoration').length > 0, t.el.querySelectorAll('.xterm-decoration').length);
+    const first = state.at;
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    await sleep(250);
+    state = index();
+    check('find: Enter goes to the next match', state && state.at === (first % 37) + 1, first + ' -> ' + (state && state.at));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true, cancelable: true }));
+    await sleep(250);
+    state = index();
+    check('find: Shift+Enter goes back to the one before', state && state.at === first, first + ' vs ' + (state && state.at));
+    await click('.next');
+    check('find: the arrow buttons do the same', index() && index().at === (first % 37) + 1);
+    await click('.previous');
+    check('find: and back', index() && index().at === first);
+
+    // the current match is selected and scrolled into view
+    await type('row 1 alpha');
+    check('find: the current match is selected, and the terminal scrolled to it', t.term.getSelection() === 'row 1 alpha' && t.term.buffer.active.viewportY === 0, JSON.stringify([t.term.getSelection(), t.term.buffer.active.viewportY]));
+
+    // the options
+    await type('alpha');
+    await click('.case');
+    check('find: Match Case (34 of them are in small letters)', index() && index().of === 34 && widget.querySelector('.case').getAttribute('aria-pressed') === 'true', count.textContent);
+    await click('.word');
+    check('find: Match Whole Word, with capitals: 30 (the "alphabet" of 4 rows does not count, nor "ALPHA")', index() && index().of === 30, count.textContent);
+    await click('.case');
+    check('find: Whole Word without Match Case: 33', index() && index().of === 33, count.textContent);
+    await click('.word');
+    check('find: and the options go off again: 37', index() && index().of === 37 && widget.querySelector('.word').getAttribute('aria-pressed') === 'false', count.textContent);
+
+    press({ key: 'c', altKey: true, keyCode: 67 }, input);
+    await sleep(300);
+    check('find: Alt+C is Match Case', widget.querySelector('.case').classList.contains('on') && index() && index().of === 34, count.textContent);
+    press({ key: 'c', altKey: true, keyCode: 67 }, input);
+    await sleep(300);
+
+    await click('.regex');
+    await type('row \\d+ alp');
+    check('find: a regular expression (30 rows have "row <number> alp")', index() && index().of === 30, count.textContent);
+    await type('(');
+    check('find: an expression that is not one is told so, not searched', /Invalid/.test(count.textContent) && input.classList.contains('invalid'), count.textContent);
+    await click('.regex');
+    await type('zzzz');
+    check('find: nothing found: "No results" in the colour of errors', count.textContent === 'No results' && count.classList.contains('none'), count.textContent);
+    await type('');
+    check('find: an empty field: nothing is counted and the highlights are gone', count.textContent === '' && t.el.querySelectorAll('.xterm-decoration').length === 0);
+
+    // F3 in the terminal while the widget is open
+    await type('alpha');
+    const before = index().at;
+    t.term.focus();
+    const f3 = press({ key: 'F3', code: 'F3', keyCode: 114 });
+    await sleep(250);
+    check('find: F3 (also with the focus in the terminal) goes to the next match, and is not sent to the shell', index() && index().at === (before % 37) + 1 && f3.length === 0, before + ' -> ' + (index() && index().at) + ' ' + JSON.stringify(f3));
+
+    // Escape
+    input.focus();
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    await sleep(150);
+    check('find: Escape closes it, takes the highlights off and gives the focus back to the terminal', widget.hidden && (!t.el.classList.contains('active') || document.activeElement === t.term.textarea) && t.el.querySelectorAll('.xterm-decoration').length === 0, document.activeElement && document.activeElement.className);
+
+    // the selected text goes into the field
+    post({ t: 'reset', id });
+    await sleep(100);
+    post({ t: 'output', id, data: 'find the needle in the hay needle\r\n' });
+    await sleep(200);
+    t.term.select(9, 0, 6);
+    press({ key: 'f', code: 'KeyF', keyCode: 70, ctrlKey: true });
+    await sleep(300);
+    check('find: the selected text of the terminal is in the field when it opens', input.value === 'needle' && index() && index().of === 2, input.value + ' / ' + count.textContent);
+    check('find: and Ctrl+Shift+F is not Find', (() => { widget.hidden = true; press({ key: 'F', code: 'KeyF', keyCode: 70, ctrlKey: true, shiftKey: true }); return widget.hidden; })());
+    widget.hidden = false;
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    await sleep(100);
+    post({ t: 'reset', id });
+    await sleep(100);
+  }
+
+  // What a terminal is doing: its mark in the list, and what the page tells the extension (agentState, attention).
+  async function stateChecks(id) {
+    const oc = window.__openconsole;
+    const t = oc.terminals.get(id);
+    const row = () => document.querySelector('#list .item[data-id="' + id + '"]');
+    const mark = () => row() && row().querySelector('.status');
+    const lastState = () => { const all = sent('agentState').filter((m) => m.id === id); return all[all.length - 1] || null; };
+    const attention = () => sent('attention').filter((m) => m.id === id);
+    const cfg = (extra) => post({ t: 'config', config: Object.assign({ fontFamily: 'Consolas, monospace', fontSize: 14, lineHeight: 1, cursorStyle: 'bar', textFont: 'Segoe UI', shellName: 'powershell', windowsBuildNumber: 22621 }, extra) });
+    const write = async (data, wait) => { post({ t: 'output', id, data }); await sleep(wait === undefined ? 120 : wait); };
+    // the state needs the screen to be read and a short dwell: wait for it (up to 6 s) instead of guessing how slow this machine is
+    const until = async (test) => { const t0 = Date.now(); while (Date.now() - t0 < 6000) { try { if (test()) return true; } catch (e) { /* not yet */ } await sleep(50); } return false; };
+    const QUESTION = ' Bash command\r\n   npm test\r\n\r\n Do you want to proceed?\r\n ❯ 1. Yes\r\n   2. No, and tell Claude what to do differently (esc)\r\n';
+
+    window.__openconsoleLooking = false;          // nobody watches this terminal
+    cfg({ attentionMinSeconds: 1 });
+    post({ t: 'reset', id });
+    await sleep(150);
+    check('state: a terminal with nothing running shows no mark', mark() && getComputedStyle(mark()).display === 'none' && mark().dataset.state === 'idle', mark() && mark().dataset.state);
+
+    // a plain program
+    post({ t: 'busy', id, busy: true, programs: ['ping.exe'] });
+    await sleep(200);
+    check('state: a program that runs under the shell is "running" (a green dot, no spinner)', mark().dataset.state === 'running' && lastState() && lastState().state === 'running' && lastState().kind === 'shell', mark().dataset.state);
+    check('state: and the extension is told', lastState().name && lastState().since > 0);
+    await sleep(1300);
+    post({ t: 'busy', id, busy: false, programs: [] });
+    await sleep(200);
+    check('state: it ended after more than the minimum time: "done", and the extension is told that it needs a look', mark().dataset.state === 'done' && attention().some((m) => m.reason === 'done') && lastState().attention === true, mark().dataset.state + ' ' + JSON.stringify(attention().map((m) => m.reason)));
+    check('state: the row is marked at its side too', mark().classList.contains('attention') && row().title.includes('done'), row().title);
+    window.__openconsoleLooking = true;
+    t.term.input('x', true);
+    await sleep(150);
+    check('state: typing in it is a look: the mark goes', mark().dataset.state === 'idle' && lastState().attention === false, mark().dataset.state);
+    window.__openconsoleLooking = false;
+
+    // an agent
+    post({ t: 'reset', id });
+    await sleep(100);
+    const before = attention().length;
+    post({ t: 'busy', id, busy: true, programs: ['node.exe', 'claude.exe'] });
+    for (let n = 0; n < 12; n++) await write('✳ Pondering… ' + n + 's · esc to interrupt\r', 150);
+    check('state: an agent whose output flows is "working", and its kind is known', mark().dataset.state === 'working' && mark().dataset.kind === 'claude' && lastState().kind === 'claude', mark().dataset.state + '/' + mark().dataset.kind);
+    check('state: the mark is a picture only: no number next to it', !mark().querySelector('.since') && mark().textContent.trim() === '', JSON.stringify(mark().textContent));
+    await write('\u001b[2J\u001b[H', 100);          // the screen is cleared: only the quiet is left
+    await sleep(2600);
+    check('state: quiet for a moment: it waits for you, and it worked long enough to be told', mark().dataset.state === 'done' && attention().slice(before).some((m) => m.reason === 'done' && m.kind === 'claude'), mark().dataset.state + ' ' + JSON.stringify(attention().slice(before).map((m) => m.reason)));
+    window.__openconsoleLooking = true;
+    t.term.input('y', true);
+    await sleep(150);
+    check('state: after a look it only waits ("ready for you")', mark().dataset.state === 'waiting' && lastState().attention === false, mark().dataset.state);
+    window.__openconsoleLooking = false;
+
+    // a question on the screen
+    const asked = attention().length;
+    await write(QUESTION, 300);
+    await until(() => mark().dataset.state === 'blocked');
+    check('state: a permission question is "blocked", and the extension is told once', mark().dataset.state === 'blocked' && attention().slice(asked).filter((m) => m.reason === 'blocked').length === 1 && lastState().attention === true && /claude-permission/.test(lastState().evidence), mark().dataset.state + ' ' + lastState().evidence);
+    check('state: the tooltip of the row says it', /needs you/.test(row().title) && /claude/.test(row().title), row().title);
+    window.__openconsoleLooking = true;
+    t.term.input('1', true);
+    await sleep(200);
+    check('state: answering is a look: the question is seen, still blocked until the screen changes', mark().dataset.state === 'blocked' && lastState().attention === false);
+    window.__openconsoleLooking = false;
+    await write('\u001b[2J\u001b[H✳ Running tests… esc to interrupt\r\n', 400);
+    check('state: the question is answered: working again', mark().dataset.state === 'working', mark().dataset.state);
+
+    // a program that is looked at is not told about
+    window.__openconsoleLooking = true;
+    const watched = attention().length;
+    await write('\u001b[2J\u001b[H' + QUESTION, 300);
+    await until(() => mark().dataset.state === 'blocked');
+    await sleep(300);
+    check('state: a terminal that is being watched is not reported (no event, no mark that needs you)', attention().length === watched && lastState().attention === false && mark().dataset.state === 'blocked', attention().length - watched + ' ' + mark().dataset.state);
+    window.__openconsoleLooking = false;
+
+    // reports of the program itself
+    post({ t: 'reset', id });
+    await sleep(100);
+    post({ t: 'busy', id, busy: true, programs: ['node.exe'] });
+    await sleep(100);
+    await write('\u001b]0;π - Desktop\u0007', 150);
+    check('state: the title tells which agent runs when the program is only node', mark().dataset.kind === 'pi', mark().dataset.kind);
+    await write('\u001b]7501;state=working\u001b\\', 150);
+    check('state: a report of the program (OSC 7501) is working, with its source', mark().dataset.state === 'working' && /report/.test(lastState().evidence), mark().dataset.state + ' ' + lastState().evidence);
+    const reported = attention().length;
+    await write('\u001b]7501;state=blocked:kind=permission\u001b\\', 150);
+    check('state: and blocked', mark().dataset.state === 'blocked' && attention().length === reported + 1 && attention()[reported].reason === 'blocked');
+    await write('\u001b]7501;state=done:msg=' + btoa('All tests pass') + '\u001b\\', 200);
+    check('state: the message of a report comes with the state', lastState().message === 'All tests pass', lastState().message);
+    await write('\u001b]9;4;0\u001b\\', 100);
+    const barCount = attention().length;
+    check('state: the progress bar sequence (9;4) does not break anything', mark().dataset.state !== undefined && attention().length === barCount);
+
+    // the bell: an agent calls, a shell only beeps
+    const rang = attention().length;
+    await write('\u0007', 150);
+    check('state: the bell of an agent is a call', attention().length === rang + 1 && attention()[rang].reason === 'bell', JSON.stringify(attention().slice(rang)));
+    post({ t: 'busy', id, busy: false, programs: [] });
+    await sleep(150);
+    const shellBell = attention().length;
+    await write('\u0007', 150);
+    check('state: the bell of a shell is not', attention().length === shellBell);
+
+    // the process ends
+    post({ t: 'busy', id, busy: true, programs: ['git.exe'] });
+    await sleep(150);
+    post({ t: 'exit', id, code: 3 });
+    await sleep(200);
+    check('state: the process of the shell ends with an error: "ended", and told', mark().dataset.state === 'exited' && attention().some((m) => m.reason === 'exited' && m.exitCode === 3) && /\(3\)/.test(row().title), mark().dataset.state + ' ' + row().title);
+    post({ t: 'reset', id });
+    await sleep(150);
+    check('state: a restart starts again', mark().dataset.state === 'idle' && lastState().state === 'idle' && lastState().attention === false);
+
+    // the rules of the user, the explanation
+    cfg({ attentionMinSeconds: 1, agentRules: [{ id: 'my-rule', state: 'blocked', any: ['waiting for the reviewer'] }] });
+    post({ t: 'busy', id, busy: true, programs: ['opencode.exe'] });
+    await sleep(100);
+    await write('Waiting for the reviewer\r\n', 300);
+    await until(() => mark().dataset.state === 'blocked');
+    check('state: a rule of the user (openconsole.agentRules) is applied', mark().dataset.state === 'blocked' && /my-rule/.test(lastState().evidence), mark().dataset.state + ' ' + lastState().evidence);
+    const explained = sent('stateExplained').length;
+    post({ t: 'explainState', id });
+    const info = sent('stateExplained').slice(explained)[0];
+    check('state: "explain" tells the state, the program, the evidence and the rows that were read', info && info.state === 'blocked' && info.kind === 'opencode' && /my-rule/.test(info.evidence) && info.rows.some((r) => /Waiting for the reviewer/.test(r)), JSON.stringify(info && [info.state, info.kind, info.evidence]));
+
+    post({ t: 'busy', id, busy: false, programs: [] });
+    post({ t: 'reset', id });
+    cfg({});
+    window.__openconsoleLooking = undefined;
+    await sleep(150);
+  }
+
+  // The name and the colour of a terminal: the double click, the menu of the row (right button), what the extension sends back.
+  async function renameChecks(id) {
+    const oc = window.__openconsole;
+    const t = oc.terminals.get(id);
+    const row = () => document.querySelector('#list .item[data-id="' + id + '"]');
+    const label = () => row() && row().querySelector('.label').textContent;
+    const original = t.kindTitle;
+    const entries = () => Array.from(document.querySelectorAll('#menu .entry')).map((e) => e.textContent);
+    const pickEntry = (text) => { const e = Array.from(document.querySelectorAll('#menu .entry')).find((x) => x.textContent.replace(/^✓ /, '') === text); if (e) e.click(); return !!e; };
+
+    check('rename: the row shows the name of the kind of terminal', label() === original && t.kindTitle === original, label() + ' / ' + original);
+    const asked = sent('renameAsk').length;
+    row().dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    const ask = sent('renameAsk').slice(asked);
+    check('rename: a double click on the row asks the extension for a name, with the current one', ask.length === 1 && ask[0].id === id && ask[0].name === original, JSON.stringify(ask));
+
+    post({ t: 'setName', id, name: '  agent ‮ one  ' });
+    await sleep(100);
+    check('rename: a name from the extension is in the row, cleaned (spaces, direction marks)', label() === 'agent one' && row().querySelector('.label').title !== undefined, label());
+    check('rename: the tooltip and the notifications use it as well', /agent one/.test(row().title) && t.title === 'agent one', row().title);
+    post({ t: 'setName', id, name: 'x'.repeat(200) });
+    await sleep(60);
+    check('rename: a name has at most 60 characters', label().length === 60, label().length);
+    post({ t: 'setName', id, name: 'الوكيل الأول' });
+    await sleep(60);
+    check('rename: an Arabic name is kept as it is', label() === 'الوكيل الأول', label());
+    post({ t: 'setName', id, name: '   ' });
+    await sleep(60);
+    check('rename: an empty name gives the name of the kind back', label() === original && t.title === original, label());
+    post({ t: 'setName', id, name: 'for the agent state' });
+    t.agent.published = '';
+    t.agent.handle([]);
+    const lastState = () => { const all = sent('agentState').filter((m) => m.id === id); return all[all.length - 1] || null; };
+    check('rename: the extension is told the new name with the state (its notifications use it)', lastState() && lastState().name === 'for the agent state', lastState() && lastState().name);
+
+    // the menu of the row
+    row().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2 }));
+    await sleep(100);
+    const menu = entries();
+    check('rename: the right button on a row opens its menu', !document.getElementById('menu').hidden && menu.includes('Rename...') && menu.includes('Red') && menu.includes('No colour') && menu.includes('Split Terminal') && menu.includes('Kill Terminal'), JSON.stringify(menu));
+    const before = sent('menuPick').length;
+    pickEntry('Rename...');
+    await sleep(60);
+    check('rename: "Rename..." of the menu asks the extension, not a menuPick', sent('renameAsk').length === asked + 2 && sent('menuPick').length === before, sent('renameAsk').length + ' ' + (sent('menuPick').length - before));
+
+    row().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2 }));
+    await sleep(80);
+    pickEntry('Green');
+    await sleep(100);
+    check('rename: a colour of the menu colours the icon of the row', row().dataset.color === 'green' && /ansiGreen/.test(row().style.getPropertyValue('--oc-tab')) && t.color === 'green', row().dataset.color + ' ' + row().style.getPropertyValue('--oc-tab'));
+    check('rename: the icon wears it', getComputedStyle(row().querySelector('.icon')).color !== getComputedStyle(row().querySelector('.label')).color, getComputedStyle(row().querySelector('.icon')).color + ' vs ' + getComputedStyle(row().querySelector('.label')).color);
+    row().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2 }));
+    await sleep(80);
+    check('rename: the colour that is on is marked in the menu', entries().includes('✓ Green'), JSON.stringify(entries()));
+    pickEntry('No colour');
+    await sleep(100);
+    check('rename: "No colour" takes it off', !row().dataset.color && !row().style.getPropertyValue('--oc-tab') && t.color === '', row().dataset.color);
+    post({ t: 'setColor', id, color: 'purple' });
+    await sleep(80);
+    check('rename: the extension can colour a terminal too, and a colour that does not exist is none', row().dataset.color === 'purple', row().dataset.color);
+    post({ t: 'setColor', id, color: 'javascript:alert(1)' });
+    await sleep(80);
+    check('rename: ... a made-up colour is no colour', !row().dataset.color && !row().style.getPropertyValue('--oc-tab'), row().dataset.color);
+    post({ t: 'setName', id, name: '' });
+    await sleep(80);
+  }
+
+  // The icon of a row: the agent or program that runs (Material Icon Theme), else the kind of shell, else the plain terminal icon.
+  async function iconChecks(id) {
+    const oc = window.__openconsole;
+    const t = oc.terminals.get(id);
+    const row = () => document.querySelector('#list .item[data-id="' + id + '"]');
+    const icon = () => row() && row().querySelector(':scope > .icon');
+    const name = () => (icon() && icon().dataset.icon) || '';
+    const base = OCProgramIcons.shellIcon(t.kindTitle) || '';
+
+    check('icon: a terminal with nothing running wears the icon of its kind of shell (or the plain one)', name() === base, name() + ' vs ' + base + ' for ' + t.kindTitle);
+    check('icon: the icons are the pictures of the theme (an svg with its own colours), 20 px', !icon() || (icon().tagName.toLowerCase() === 'svg' && icon().getBoundingClientRect().width === 20), icon() && icon().getBoundingClientRect().width);
+    post({ t: 'busy', id, busy: true, programs: ['node.exe'] });
+    await sleep(150);
+    check('icon: a program that runs gives its icon (node)', name() === 'nodejs', name());
+    check('icon: and it has colours of its own, not the colour of the text', icon() && !!icon().querySelector('[fill]') && getComputedStyle(icon()).fill !== '', icon() && icon().outerHTML.slice(0, 80));
+    post({ t: 'output', id, data: '\u001b]0;π - Desktop\u0007' });
+    await sleep(200);
+    check('icon: pi (a node program whose title starts with the letter pi) has an icon of its own, not the one of Node.js', name() === 'pi', name());
+    post({ t: 'busy', id, busy: true, programs: ['node.exe', 'claude.exe'] });
+    await sleep(150);
+    check('icon: an agent wins over the program under it (Claude Code)', name() === 'claude', name());
+    post({ t: 'busy', id, busy: false, programs: [] });
+    await sleep(150);
+    post({ t: 'busy', id, busy: true, programs: ['python.exe'] });
+    await sleep(150);
+    check('icon: another program changes the icon at once, in the same row', name() === 'python' && document.querySelectorAll('#list .item[data-id="' + id + '"]').length === 1, name());
+    post({ t: 'busy', id, busy: true, programs: ['ping.exe'] });
+    await sleep(150);
+    check('icon: a program that has no icon leaves the icon of the shell', name() === base, name() + ' vs ' + base);
+    post({ t: 'busy', id, busy: true, programs: ['git.exe'] });
+    await sleep(100);
+    post({ t: 'setColor', id, color: 'green' });
+    await sleep(120);
+    check('icon: a terminal with a colour keeps the plain icon, in that colour (the pictures have their own colours)', row().dataset.color === 'green' && !icon().dataset.icon && icon().classList.contains('icon'), row().dataset.color + ' ' + name());
+    post({ t: 'setColor', id, color: '' });
+    await sleep(120);
+    check('icon: without the colour the icon of the program is back', name() === 'git', name());
+    post({ t: 'busy', id, busy: false, programs: [] });
+    await sleep(150);
+    check('icon: when the program ends the icon of the shell is back', name() === base, name() + ' vs ' + base);
+  }
+
+  // Visual mode, typing at the end in Claude Code: it parks the cursor of the terminal on the first letter of the word, and the page draws the
+  // cursor in the free cell at the left end of the text instead, so that the letter stays in its word.
+  async function visualCaretChecks(id) {
+    const oc = window.__openconsole;
+    const t = oc.terminals.get(id);
+    post({ t: 'mode', id, mode: 'visual' });
+    const word = 'كفيك';           // "كيفك" in the visual order that Claude Code writes
+    post({ t: 'output', id, data: '\u001b[2J\u001b[H\u001b[?25h' + '❯  ' + word + '\u001b[1;7H' });
+    await sleep(500);
+    const rowEl = t.el.querySelector('.xterm-rows').children[0];
+    const cw = t.el.querySelector('.xterm-rows').getBoundingClientRect().width / t.term.cols;
+    const cursor = rowEl.querySelector('.oc-cursor');
+    const others = Array.from(rowEl.querySelectorAll('.oc-box:not(.oc-cursor)'));
+    const letters = others.map((b) => b.textContent).join('').replace(/[^؀-ۿ]/g, '');
+    check('visual caret: the real cursor is on the last cell of the word', t.term.buffer.active.cursorX === 6 && t.term.buffer.active.cursorY === 0, t.term.buffer.active.cursorX + ',' + t.term.buffer.active.cursorY);
+    check('visual caret: the word keeps all its letters (the cursor does not sit on one of them)', letters.length === 4, JSON.stringify(letters));
+    check('visual caret: the cursor is a blank cell, not the letter that was under it', cursor && cursor.textContent.trim() === '', cursor && JSON.stringify(cursor.textContent));
+    const wordBox = others.find((b) => /[؀-ۿ]/.test(b.textContent));
+    // a bar stands on the left edge of the word, a block (or the outline of a terminal that has no focus) in the cell in front of it
+    const isBar = !!cursor && !!cursor.querySelector('.xterm-cursor-bar, .xterm-cursor.xterm-cursor-bar') || !!cursor && /xterm-cursor-bar/.test(cursor.innerHTML);
+    const expected = wordBox ? wordBox.getBoundingClientRect().left - (isBar ? 0 : cw) : 0;
+    check('visual caret: the cursor stands at the left end of the word, where the next letter appears', cursor && wordBox && Math.abs(cursor.getBoundingClientRect().left - expected) <= 2, cursor && wordBox && (cursor.getBoundingClientRect().left + ' vs ' + wordBox.getBoundingClientRect().left));
+    check('visual caret: and it is one cell wide at the most', cursor && cursor.getBoundingClientRect().width <= cw + 1, cursor && cursor.getBoundingClientRect().width);
+
+    // the cursor in the middle of the text (after the Left arrow the text starts one cell earlier): left where xterm.js has it
+    post({ t: 'output', id, data: '\u001b[2J\u001b[H❯ ' + word + '\u001b[1;6H' });
+    await sleep(500);
+    const middle = t.el.querySelector('.xterm-rows').children[0].querySelector('.oc-cursor');
+    check('visual caret: with the cursor inside the text nothing is moved (it stays on its cell)', middle && middle.textContent.trim() !== '', middle && JSON.stringify(middle.textContent));
+    post({ t: 'output', id, data: '\u001b[2J\u001b[H' });
+    await sleep(200);
+  }
+
+  // The words mode: every Arabic word is mirrored on its own and the words stay in the order they were typed, so the first word
+  // does not move while more is typed. In the implicit mode the whole stretch is one run that grows at its right end.
+  async function wordsChecks(id) {
+    const oc = window.__openconsole;
+    const t = oc.terminals.get(id);
+    const prompt = 'PS C:\> ';
+    const marhaba = 'مرحبا', bilalam = 'بالعالم', hatha = 'هذا';
+    // where the word itself is on the screen (not the box around it: in the implicit mode a box holds the whole stretch)
+    const leftOf = (word) => {
+      for (const box of t.el.querySelectorAll('.oc-box')) {
+        const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const at = node.textContent.indexOf(word);
+          if (at < 0) continue;
+          const range = document.createRange();
+          range.setStart(node, at);
+          range.setEnd(node, at + word.length);
+          const rects = range.getClientRects();
+          if (rects.length) return Math.round(rects[0].left);
+        }
+      }
+      return null;
+    };
+    const boxesOf = () => Array.from(t.el.querySelectorAll('.oc-box')).filter((b) => /[؀-ۿ]/.test(b.textContent)).map((b) => b.textContent.trim());
+    for (const mode of ['implicit', 'words']) {
+      post({ t: 'reset', id });
+      post({ t: 'mode', id, mode });
+      await sleep(150);
+      post({ t: 'output', id, data: prompt + marhaba });
+      await sleep(250);
+      const first = leftOf(marhaba);
+      post({ t: 'output', id, data: ' ' + bilalam + ' ' + hatha });
+      await sleep(250);
+      const later = leftOf(marhaba);
+      if (mode === 'implicit') check('words mode: in the implicit mode the first word moves while more is typed (proves the check)', first !== null && later !== null && first !== later, first + ' -> ' + later);
+      else {
+        check('words mode: the first word does not move while more is typed', first !== null && first === later, first + ' -> ' + later);
+        check('words mode: every word is a box of its own, in the order it was typed', JSON.stringify(boxesOf()) === JSON.stringify([marhaba, bilalam, hatha]), JSON.stringify(boxesOf()));
+        const lefts = [marhaba, bilalam, hatha].map(leftOf);
+        check('words mode: the words follow each other from left to right', lefts[0] < lefts[1] && lefts[1] < lefts[2], JSON.stringify(lefts));
+      }
+    }
+    post({ t: 'mode', id, mode: 'implicit' });
+    post({ t: 'reset', id });
+    await sleep(100);
+  }
+
+  (async () => {
+    try {
+      const oc = window.__openconsole;
+      check('the page says hello', sent('hello').length === 1);
+      post({ t: 'config', config: { fontFamily: 'Consolas, monospace', fontSize: 14, lineHeight: 1, cursorStyle: 'bar', textFont: 'Segoe UI', shellName: 'powershell', windowsBuildNumber: 22621 } });
+      await sleep(300);
+      if (location.hash === '#chip') {
+        await chipChecks(1, true);
+        document.getElementById('result').textContent = JSON.stringify({ done: 'chip', results });
+        return;
+      }
+      check('one terminal after the configuration', oc.terminals.size === 1, oc.terminals.size);
+      check('ready for id 1 with a size', sent('ready').length === 1 && sent('ready')[0].id === 1 && sent('ready')[0].cols > 20, JSON.stringify(sent('ready')));
+      check('the list is hidden with one terminal', list().hidden);
+      const firstCols = sent('ready')[0].cols;
+
+      post({ t: 'output', id: 1, data: 'ONE first terminal\r\n' });
+      post({ t: 'new' });
+      await sleep(400);
+      check('a second terminal after "new"', oc.terminals.size === 2, oc.terminals.size);
+      check('ready for id 2', sent('ready').length === 2 && sent('ready')[1].id === 2, JSON.stringify(sent('ready')));
+      check('the list is visible with two terminals', !list().hidden && list().offsetWidth > 100, list().offsetWidth);
+      check('two items named like the shell', items().length === 2 && items().every((i) => i.textContent.trim() === 'powershell'), items().map((i) => i.textContent.trim()));
+      check('the new terminal is the shown one', shown().length === 1 && shown()[0] === 2, shown());
+      check('only the second item is marked', items()[1].classList.contains('active') && !items()[0].classList.contains('active'));
+      check('the new terminal is narrower than the first was (the list takes room)', sent('ready')[1].cols < firstCols, sent('ready')[1].cols + ' < ' + firstCols);
+      const resizes = sent('resize').filter((m) => m.id === 1);
+      check('the first terminal was resized when the list appeared', resizes.length >= 1 && resizes[resizes.length - 1].cols === sent('ready')[1].cols,
+        JSON.stringify(resizes) + ' | cols now: ' + Array.from(oc.terminals.values()).map((t) => t.id + ':' + t.term.cols + ' pane ' + t.el.clientWidth).join(', ') +
+        ' | #terminals ' + document.getElementById('terminals').clientWidth + ' list ' + list().offsetWidth);
+      check('the hidden terminal is invisible but keeps its size', getComputedStyle(oc.terminals.get(1).el).visibility === 'hidden' && oc.terminals.get(1).el.clientWidth === oc.terminals.get(2).el.clientWidth);
+
+      // The line between the terminals and the list is a sash: dragged to the left or to the right, the list follows at once.
+      {
+        const sash = document.getElementById('sash');
+        const app = document.getElementById('app');
+        const centerX = () => { const r = sash.getBoundingClientRect(); return r.left + r.width / 2; };
+        const pointer = (type, x, extra) => sash.dispatchEvent(new PointerEvent(type, Object.assign({ clientX: x, clientY: 40, button: 0, pointerId: 7, bubbles: true, cancelable: true }, extra)));
+        const listWidth = () => Math.round(list().getBoundingClientRect().width);
+        const cols2 = () => oc.terminals.get(2).term.cols;
+        check('sash: the line between the terminals and the list can be grabbed (col-resize) and covers the line of the list', sash && !sash.hidden && getComputedStyle(sash).cursor === 'col-resize' && Math.abs(centerX() - (list().getBoundingClientRect().left + 0.5)) <= 1.5, sash && (getComputedStyle(sash).cursor + ' ' + centerX() + ' vs ' + list().getBoundingClientRect().left));
+        check('sash: it takes no room (the list is 184px, as before)', listWidth() === 184 && sash.getBoundingClientRect().width === 5, listWidth());
+        const colsBefore = cols2();
+        const x0 = centerX();
+        pointer('pointerdown', x0);
+        check('sash: held: it lights up and the view keeps the cursor of the line', sash.classList.contains('dragging') && document.body.classList.contains('oc-resizing'));
+        pointer('pointermove', x0 - 30);
+        pointer('pointermove', x0 - 60);
+        await sleep(150);
+        check('sash: dragged 60px to the left the list is 60px wider', listWidth() === 244, listWidth());
+        check('sash: the terminals were measured again for their smaller area', cols2() < colsBefore && sent('resize').some((m) => m.id === 2 && m.cols === cols2()), colsBefore + ' -> ' + cols2());
+        pointer('pointermove', x0 - 20);
+        await sleep(100);
+        check('sash: and back to the right: the list is narrower again', listWidth() === 204, listWidth());
+        pointer('pointerup', x0 - 20);
+        check('sash: let go: the line is not lit any more and the view has its cursor back', !sash.classList.contains('dragging') && !document.body.classList.contains('oc-resizing'));
+        check('sash: the width is kept in the state of the view', window.__state && window.__state.listWidth === 204, JSON.stringify(window.__state));
+        pointer('pointermove', x0 - 200);
+        await sleep(100);
+        check('sash: moving without holding does nothing', listWidth() === 204, listWidth());
+
+        const room = app.clientWidth - 120;
+        pointer('pointerdown', centerX());
+        pointer('pointermove', -3000);
+        pointer('pointerup', -3000);
+        await sleep(150);
+        check('sash: far to the left the terminals keep 120px', listWidth() === room, listWidth() + ' vs ' + room);
+        pointer('pointerdown', centerX());
+        pointer('pointermove', 5000);
+        pointer('pointerup', 5000);
+        await sleep(150);
+        check('sash: far to the right the list keeps 80px for a name', listWidth() === 80, listWidth());
+
+        sash.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+        await sleep(100);
+        check('sash: a double click gives the list its usual width back', listWidth() === 184 && window.__state.listWidth === 184, listWidth());
+        const key = (k) => sash.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+        key('ArrowLeft');
+        await sleep(60);
+        check('sash: with the focus, the left arrow makes the list wider', listWidth() === 200, listWidth());
+        key('ArrowRight'); key('ArrowRight');
+        await sleep(60);
+        check('sash: the right arrow makes it narrower', listWidth() === 168, listWidth());
+        key('Home');
+        await sleep(100);
+        check('sash: Home gives it the usual width', listWidth() === 184 && sash.getAttribute('aria-valuenow') === '184', listWidth());
+        check('sash: the terminals have their size from before again', Math.abs(cols2() - colsBefore) <= 1, cols2() + ' vs ' + colsBefore);
+      }
+
+      post({ t: 'output', id: 2, data: 'TWO second terminal السلام عليكم\r\n' });
+      post({ t: 'output', id: 1, data: 'more for one\r\n' });
+      await sleep(300);
+      check('output goes to the terminal with that id', text(1).includes('ONE first terminal') && text(1).includes('more for one') && !text(1).includes('TWO'), JSON.stringify(text(1)));
+      check('and not to the other', text(2).includes('TWO second terminal') && !text(2).includes('ONE') && !text(2).includes('more for one'), JSON.stringify(text(2)));
+
+      if (location.hash === '#shot') { document.getElementById('result').textContent = JSON.stringify({ done: 'shot', results }); return; }
+      if (location.hash === '#icons') {
+        // two more terminals of other kinds, and programs in the first two, so that a picture shows the icons of the list
+        post({ t: 'new', title: 'Git Bash' });
+        post({ t: 'new', title: 'powershell' });
+        post({ t: 'busy', id: 1, busy: true, programs: ['node.exe', 'claude.exe'] });
+        post({ t: 'busy', id: 2, busy: true, programs: ['node.exe'] });
+        post({ t: 'output', id: 2, data: '\u001b]0;\u03c0 - Desktop\u0007' });
+        await sleep(600);
+        document.getElementById('result').textContent = JSON.stringify({ done: 'icons', results }); return;
+      }
+
+      // typing goes out with the id of the terminal that has the keyboard
+      oc.terminals.get(2).term.input('dir\r', true);
+      check('input carries the id of the shown terminal', sent('input').some((m) => m.id === 2 && m.data === 'dir\r') && !sent('input').some((m) => m.id === 1), JSON.stringify(sent('input')));
+
+      // pick the first terminal in the list
+      items()[0].click();
+      await sleep(100);
+      check('clicking an item shows that terminal', shown().length === 1 && shown()[0] === 1 && items()[0].classList.contains('active'), shown());
+      check('and tells the extension', sent('active').some((m) => m.id === 1));
+      check('the extension is told about the shown terminal only after the user picks it', sent('active').length === 1, sent('active').length);
+
+      // kill the second one with its button
+      items()[1].querySelector('.close').click();
+      await sleep(200);
+      check('the killed terminal is gone', oc.terminals.size === 1 && !oc.terminals.has(2), Array.from(oc.terminals.keys()));
+      check('the extension is told to close it', sent('close').length === 1 && sent('close')[0].id === 2, JSON.stringify(sent('close')));
+      check('the list hides again with one terminal', list().hidden);
+      check('sash: the line goes with the list', document.getElementById('sash').hidden);
+      // (one column of difference is allowed: the first measurement happens before the font is settled)
+      check('the remaining terminal is shown and has the full width again', shown()[0] === 1 && Math.abs(oc.terminals.get(1).term.cols - firstCols) <= 1, oc.terminals.get(1).term.cols + ' vs ' + firstCols);
+      check('its text is still there', text(1).includes('ONE first terminal'));
+
+      // closing the shown terminal of two activates its neighbour
+      post({ t: 'new' });
+      await sleep(300);
+      check('a third terminal got a new id, not a reused one', sent('ready')[2].id === 3, JSON.stringify(sent('ready')));
+      items()[1].querySelector('.close').click();
+      await sleep(200);
+      check('after killing the shown one the other is shown', shown().length === 1 && shown()[0] === 1 && oc.terminals.size === 1, shown());
+      check('and the extension hears "active" for it', sent('active').some((m) => m.id === 1 && sent('active').length >= 2), JSON.stringify(sent('active')));
+
+      // a shell that ended: Enter starts it again
+      const restartsBefore = sent('restart').length;
+      post({ t: 'exit', id: 1, code: 0 });
+      await sleep(200);
+      check('the end of the process is written into that terminal', text(1).includes('The process ended'), JSON.stringify(text(1).slice(-120)));
+      oc.terminals.get(1).term.input('\r', true);
+      const restarts = sent('restart');
+      check('Enter after the end asks the extension to restart that terminal', restarts.length === restartsBefore + 1 && restarts[restarts.length - 1].id === 1, JSON.stringify(restarts));
+      check('the input of that Enter is not sent to the shell', !sent('input').some((m) => m.data === '\r'));
+      post({ t: 'reset', id: 1 });
+      await sleep(100);
+      check('reset clears the terminal', !text(1).includes('ONE first terminal'));
+
+      // messages of one terminal never touch another one
+      post({ t: 'new' });
+      await sleep(300);
+      post({ t: 'clear', id: 1 });
+      post({ t: 'output', id: 4, data: 'FOUR\r\n' });
+      await sleep(200);
+      check('clear and output use the id', text(4).includes('FOUR'));
+      check('messages for an unknown id are ignored', (() => { try { post({ t: 'output', id: 77, data: 'x' }); post({ t: 'mode', id: 77, mode: 'visual' }); return true; } catch (e) { return false; } })());
+      post({ t: 'mode', id: 4, mode: 'visual' });
+      await sleep(100);
+      check('the mode belongs to one terminal', oc.terminals.get(4).mode === 'visual' && oc.terminals.get(1).mode === 'implicit');
+      // The Ctrl+V that Windows sends after you pick an item of the clipboard history (Win+V) has no scan code: its "code" is
+      // empty, its key is the letter of the layout ("ر" on an Arabic layout), its virtual key code is 86.
+      const textarea = oc.terminals.get(4).term.textarea;
+      const keydown = (init) => {
+        const before = sent('input').length;
+        textarea.dispatchEvent(new KeyboardEvent('keydown', Object.assign({ bubbles: true, cancelable: true }, init)));
+        return sent('input').slice(before).map((m) => m.data);
+      };
+      check('Ctrl+V is left to the browser, which pastes', keydown({ key: 'ر', code: 'KeyV', keyCode: 86, ctrlKey: true }).length === 0);
+      check('Ctrl+V without a code (as Win+V sends it) too, and nothing is typed', keydown({ key: 'ر', code: '', keyCode: 86, ctrlKey: true }).length === 0);
+      check('Shift+Insert without a code too', keydown({ key: 'Insert', code: '', keyCode: 45, shiftKey: true }).length === 0);
+      check('Ctrl+C without a selection still goes to the program', JSON.stringify(keydown({ key: 'c', code: '', keyCode: 67, ctrlKey: true })) === JSON.stringify(['\u0003']), JSON.stringify(keydown({ key: 'c', code: '', keyCode: 67, ctrlKey: true })));
+      check('Ctrl+Z is not taken for a shortcut of ours', JSON.stringify(keydown({ key: 'z', code: 'KeyZ', keyCode: 90, ctrlKey: true })) === JSON.stringify(['\u001a']));
+      // Split: the button of a row opens a terminal at the right side of that one, in the same group
+      const rowOf = (id) => items().find((i) => i.dataset.id === String(id));
+      const focusedRow = () => (items().find((i) => i.classList.contains('active')) || {}).dataset && items().find((i) => i.classList.contains('active')).dataset.id;
+      const rect = (id) => oc.terminals.get(id).el.getBoundingClientRect();
+      const rowsBefore = items().map((i) => i.dataset.id);
+      const readyBefore = sent('ready').length;
+      check('every row has a split button and a trash button', items().every((i) => i.querySelector('.split') && i.querySelector('.close')) && rowOf(4).querySelector('.split').title === 'Split Terminal' && rowOf(4).querySelector('.close').title === 'Kill Terminal');
+      check('the buttons are drawn with the icons of VS Code', rowOf(4).querySelector('.split svg path') && rowOf(4).querySelector('.close svg path') && !rowOf(4).querySelector('.close').innerHTML.includes('L8 7.293'));
+      const centerOf = (svg) => { const b = svg.getBBox(); return [b.x + b.width / 2 - 8, b.y + b.height / 2 - 8]; };
+      check('the split and trash icons are centered in their boxes', [rowOf(4).querySelector('.split svg'), rowOf(4).querySelector('.close svg')].every((svg) => centerOf(svg).every((d) => Math.abs(d) < 0.01)),
+        JSON.stringify([centerOf(rowOf(4).querySelector('.split svg')), centerOf(rowOf(4).querySelector('.close svg'))]));
+      // the two bars inside the can are as far from its left wall as from its right wall (their middle is the middle of the can)
+      const closeSvg = rowOf(4).querySelector('.close svg');
+      const bars = Array.from(closeSvg.querySelectorAll('.bar')).map((bar) => { const b = bar.getBBox(); return b.x + b.width / 2; });
+      const canBox = closeSvg.querySelector('.can').getBBox();
+      check('the two bars of the trash icon are in the middle of the can', bars.length === 2 && Math.abs((bars[0] + bars[1]) / 2 - (canBox.x + canBox.width / 2)) < 0.01, JSON.stringify([bars, canBox.x, canBox.width]));
+      check('the icons are made of parts that can move: the divider halves of Split, the lid of the bin', !!rowOf(4).querySelector('.split svg .half-l') && !!rowOf(4).querySelector('.split svg .half-r') && !!closeSvg.querySelector('.lid'));
+      const widthAlone = rect(4).width;
+      rowOf(4).querySelector('.split').click();
+      await sleep(500);
+      check('the split button adds a terminal', oc.terminals.size === rowsBefore.length + 1, oc.terminals.size);
+      const splitReady = sent('ready').slice(readyBefore)[0] || {};
+      check('it is reported as the split of terminal 4, without a token', splitReady.id === 5 && splitReady.splitOf === 4 && splitReady.token === undefined, JSON.stringify(splitReady));
+      check('it has the name of the terminal that was split', oc.terminals.get(5).title === oc.terminals.get(4).title);
+      const r4 = rect(4), r5 = rect(5);
+      check('the two are shown side by side, each with half of the width', shown().length === 2 && Math.abs(r4.width - r5.width) < 2 && Math.abs(r4.right - r5.left) < 2 && r5.left > r4.left && Math.abs(r4.width * 2 - widthAlone) < 4,
+        JSON.stringify([widthAlone, r4.left, r4.width, r5.left, r5.width]));
+      check('each of them was measured for its half: fewer columns than before', oc.terminals.get(4).term.cols < 70 && oc.terminals.get(5).term.cols === oc.terminals.get(4).term.cols, oc.terminals.get(4).term.cols + ' / ' + oc.terminals.get(5).term.cols);
+      check('there is a line between the two, which takes no room', oc.terminals.get(5).el.classList.contains('divided') && !oc.terminals.get(4).el.classList.contains('divided'));
+      check('the new terminal has the focus', focusedRow() === '5', focusedRow());
+      check('the rows of the two hang together in the list', rowOf(4).classList.contains('grouped') && rowOf(4).classList.contains('first') && rowOf(5).classList.contains('grouped') && rowOf(5).classList.contains('last') && !rowOf(1).classList.contains('grouped'));
+      check('the new row comes right after the one that was split', items().map((i) => i.dataset.id).join() === rowsBefore.concat('5').join(), items().map((i) => i.dataset.id).join());
+      check('the terminal of the other group is hidden', getComputedStyle(oc.terminals.get(1).el).visibility === 'hidden');
+
+      oc.terminals.get(4).term.textarea.focus();
+      await sleep(150);
+      check('focusing the left one moves the focus there, and both stay shown', focusedRow() === '4' && shown().length === 2 && sent('active').some((m) => m.id === 4 && sent('active').lastIndexOf(m) === sent('active').length - 1), focusedRow() + ' ' + JSON.stringify(sent('active').slice(-2)));
+      post({ t: 'output', id: 5, data: 'ONLY_RIGHT\r\n' });
+      await sleep(200);
+      check('what a split terminal writes stays in it', text(5).includes('ONLY_RIGHT') && !text(4).includes('ONLY_RIGHT'));
+
+      rowOf(5).querySelector('.close').click();
+      await sleep(400);
+      check('killing one of the two leaves the other alone, with the whole width', oc.terminals.size === rowsBefore.length && !oc.terminals.has(5) && shown().length === 1 && Math.abs(rect(4).width - widthAlone) < 2, rect(4).width + ' vs ' + widthAlone);
+      check('and it is not in a group any more', !rowOf(4).classList.contains('grouped') && sent('close').some((m) => m.id === 5));
+
+      await suggestChecks(4);
+      await menuChecks(4);
+      await linkChecks(4);
+      await rightClickChecks(4);
+      await chipDeleteChecks(4);
+      await findChecks(4);
+      await stateChecks(4);
+      await renameChecks(4);
+      await iconChecks(4);
+      await visualCaretChecks(4);
+      await wordsChecks(4);
+      await chipChecks(4, false);
+      document.getElementById('result').textContent = JSON.stringify({ done: 'all', results });
+    } catch (e) {
+      results.push({ name: 'the scenario did not crash', ok: false, detail: String(e && e.stack || e) });
+      document.getElementById('result').textContent = JSON.stringify({ done: 'crash', results });
+    }
+  })();
+</script>
+</body>
+</html>

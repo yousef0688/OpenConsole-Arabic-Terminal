@@ -142,26 +142,34 @@
 
             // 3. the layout
             const mode = this.getMode();
-            const isolate = cursorIdx >= 0 ? { before: cursorIdx, after: cursorIdx + 1 } : undefined;
-            const analysis = mode === 'visual' ? L.analyzeVisual(units, isolate) : L.analyzeImplicit(units, isolate);
+            // Claude Code (visual mode) parks the cursor on the first letter of the word that is being typed: the letter stays in its word, and
+            // the cursor is drawn in the free cell at the left end of the text, where the next letter appears
+            const endCaret = mode === 'visual' && cursorIdx >= 0 ? L.visualEndCaret(units, cursorIdx) : null;
+            const isolate = cursorIdx >= 0 && !endCaret ? { before: cursorIdx, after: cursorIdx + 1 } : undefined;
+            const analysis = mode === 'visual' ? L.analyzeVisual(units, isolate) : mode === 'words' ? L.analyzeWords(units, isolate) : L.analyzeImplicit(units, isolate);
             if (!analysis.hasRtl) return null;
 
             // 4. the boxes
             const boxes = [];
             const doc = rowEl.ownerDocument;
             for (const box of analysis.boxes) {
-                if (cursorIdx >= 0 && box.u0 === cursorIdx && box.u1 === cursorIdx + 1) continue;   // the cursor is placed below
+                if (cursorIdx >= 0 && !endCaret && box.u0 === cursorIdx && box.u1 === cursorIdx + 1) continue;   // the cursor is placed below
                 boxes.push(this._makeBox(doc, box, units, styles, cellWidth));
             }
             let cursorBox = null;
             if (cursorSpan) {
                 const bar = /\bxterm-cursor-bar\b/.test(cursorSpan.className);
-                let col = L.cursorColumn(analysis, units, cursorIdx, bar ? 'bar' : 'other', units[cursorIdx].col);
+                let col = endCaret ? (bar ? endCaret.col : endCaret.col - 1) : L.cursorColumn(analysis, units, cursorIdx, bar ? 'bar' : 'other', units[cursorIdx].col);
                 col = Math.max(0, col);
                 cursorBox = doc.createElement('div');
                 cursorBox.className = 'oc-box oc-cursor';
                 cursorBox.style.cssText = 'position:absolute;z-index:2;top:0;height:100%;left:' + (col * cellWidth) + 'px;width:' + (units[cursorIdx].width * cellWidth) + 'px;';
-                cursorBox.appendChild(cursorSpan);
+                if (endCaret) {
+                    const blank = cursorSpan.cloneNode(false);        // the cursor of an empty cell: the letter that was under it stays in its word
+                    blank.textContent = ' ';
+                    cursorBox.appendChild(blank);
+                }
+                else cursorBox.appendChild(cursorSpan);
             }
 
             return {

@@ -14,7 +14,7 @@
        - an "OpenConsole" shortcut on the desktop and in the Start menu,
        - an "Open OpenConsole here" entry in the right-click menu of folders and folder backgrounds.
     5. If Visual Studio Code is installed, adds the OpenConsole tab to it (a terminal in the panel with correct Arabic and Hebrew;
-       the file openconsole-terminal-*.vsix that ships in the zip; from the source repository use -VSCode). Use -NoVSCode to skip this.
+       the file openconsole-*.vsix that ships in the zip; from the source repository use -VSCode). Use -NoVSCode to skip this.
 
     Run it from a normal PowerShell window, or double-click install.cmd.
     Use -Uninstall to remove everything it created. The console settings of the rest of Windows are never touched.
@@ -58,8 +58,10 @@
     Install the VS Code extension into this extensions folder (a portable VS Code, or a test) instead of the default one.
 
 .PARAMETER BidiMode
-    How right-to-left text is laid out: 0 = not at all, 1 = reorder it, 2 = the program already reordered it.
-    Default: automatic (reorder it, except while claude.exe runs in the window). Leave it alone unless you know why.
+    How right-to-left text is laid out: 0 = not at all, 1 = reorder it, 2 = the program already reordered it,
+    3 = words mode (every word on its own, the words keep the order they were typed in).
+    Default: automatic (reorder it, except while claude.exe runs in the window: mode 2, and pi or opencode: mode 3).
+    Leave it alone unless you know why.
 
 .EXAMPLE
     .\install.ps1
@@ -351,7 +353,7 @@ if (-not $NoContextMenu) {
     Write-Host "Open $Name here"
 }
 
-$hasExtensionPackage = [bool](Get-ChildItem -LiteralPath $root -Filter 'openconsole-terminal*.vsix' -File -ErrorAction SilentlyContinue)
+$hasExtensionPackage = [bool](Get-ChildItem -LiteralPath $root -Filter 'openconsole-*.vsix' -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -notlike 'openconsole-terminal-*' })
 if (-not $NoVSCode -and (Test-Path -LiteralPath $vscodeScript) -and ($hasExtensionPackage -or $VSCode)) {
     Write-Step 'Adding the OpenConsole tab to Visual Studio Code (skipped when it is not installed)'
     Invoke-VSCodeInstaller @{ SkipIfMissing = $true } 'The VS Code extension could not be installed'
